@@ -22,12 +22,12 @@ public sealed unsafe partial class AlloyRenderer
     /// <summary>Report lines the scene says per session at most.</summary>
     private const int RtReports = 12;
 
-    /// <summary>One slot's row as cx_ssrres_f.glsl reads it: the layout (and whether a hit is alpha-tested), first vertex,
-    /// first index, stride in floats.</summary>
+    /// <summary>One slot's row as cx_rtlib.glsl reads it: the layout (and whether a hit is alpha-tested), first vertex, first
+    /// index, stride in floats; then its index and vertex counts, which bound every read a hit makes.</summary>
     [StructLayout(LayoutKind.Sequential)]
     private struct RtGeomRow
     {
-        public uint FormatFlags, Base, First, Stride;
+        public uint FormatFlags, Base, First, Stride, Indices, Vertices, Pad0, Pad1;
     }
 
     private const uint RtCutout = 1u << 8, RtBaked = 1u << 9;
@@ -61,6 +61,8 @@ public sealed unsafe partial class AlloyRenderer
         public bool Said;
         /// <summary>The report's frame counter and lines said.</summary>
         public int Frames, Reports;
+        /// <summary>The frame the scene was last built for: it is built once a frame, whatever passes read it.</summary>
+        public int Built = -1;
     }
 
     private static VkRtState _vkRt = new();
@@ -75,9 +77,11 @@ public sealed unsafe partial class AlloyRenderer
     private static void VkRtFrame(VkBackend vk, CommandList cl, ExtenderLog log)
     {
         VkRtState s = _vkRt;
+        if (s.Dev == vk && s.Built == _frameSeq) return;
         s.Tlas = 0;
         if (!vk.RayTracing || !Renderer.RayTrace.Boot) return;
         if (s.Dev != vk) { _vkRt = s = new VkRtState { Dev = vk }; }
+        s.Built = _frameSeq;
         // a grown arena buffer holds the same ranges at new addresses: every bottom level is rebuilt against it
         bool moved = !MeshArena.VkEbo.Equals(s.Ebo);
         for (int f = 0; f < MeshArena.Formats; f++) moved |= !MeshArena.VkVbo((MeshArena.Fmt)f).Equals(s.Vbo[f]);
@@ -122,7 +126,7 @@ public sealed unsafe partial class AlloyRenderer
             var row = new RtGeomRow
             {
                 FormatFlags = (uint)fmt | (cutout ? RtCutout : 0u) | (baked ? RtBaked : 0u), Base = (uint)baseV, First = (uint)(off / sizeof(ushort)),
-                Stride = (uint)(MeshArena.StrideBytes(fmt) / sizeof(float)),
+                Stride = (uint)(MeshArena.StrideBytes(fmt) / sizeof(float)), Indices = (uint)count, Vertices = (uint)verts,
             };
             if (!s.Geom[i].Equals(row)) { s.Geom[i] = row; s.GeomLo = Math.Min(s.GeomLo, i); s.GeomHi = Math.Max(s.GeomHi, i); }
             if (n == s.Inst.Length) Array.Resize(ref s.Inst, n * 2);

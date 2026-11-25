@@ -100,8 +100,6 @@ public sealed unsafe partial class AlloyRenderer
         if (!s.Armed) return;
         s.Armed = false;
         if (!Matrix4x4.Invert(proj, out Matrix4x4 invProj) || !Matrix4x4.Invert(view, out Matrix4x4 invView)) return;
-        // alloy.raytrace: the scene the resolve traces where the screen runs out, built before anything reads it
-        VkRtFrame(vk, cl, log);
         s.PlOn = mirror && VkPlanarPass(vk, cl, s, vp, viewport, near, far, log);
         VkColourState c = _vkc;
         int arena0 = c.ArenaUsed;

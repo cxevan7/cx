@@ -50,6 +50,10 @@ public sealed unsafe partial class AlloyRenderer
         cl.BeginLabel("uploads"u8);
         if (!VkUploads(vk, cl)) return false;
         cl.EndLabel();
+        // alloy.raytrace: built before the first pass that traces it, so every pass in the frame reads one scene
+        cl.BeginLabel("ray scene"u8);
+        VkRtFrame(vk, cl, log);
+        cl.EndLabel();
         cl.BeginLabel("content stages"u8);
         StageResources.VkRun(vk, cl, viewport, _capturing, log);
         cl.EndLabel();

@@ -41,12 +41,17 @@ uint CxRtIndex(uint i)
 /// The uv, object-space normal and lightmap uv at barycentric <paramref name="bc"/> of slot <paramref name="slot"/>'s triangle <paramref name="prim"/>.
 void CxRtTri(uint slot, uint prim, vec2 bc, out vec2 uv, out vec3 nrm, out vec2 chart)
 {
-    uvec4 g = CxRtG(packUint2x32(uRtA.zw)).v[slot];
+    uvec4 g = CxRtG(packUint2x32(uRtA.zw)).v[slot * 2u];
+    uvec4 n = CxRtG(packUint2x32(uRtA.zw)).v[slot * 2u + 1u];
     CxRtF vb = CxRtVbo(g.x & 0xFFu);
     uv = vec2(0.0); nrm = vec3(0.0); chart = vec2(0.0);
+    // every read stays inside the slot's own mesh: a hit on a structure older than its row reads nothing past it
+    if (prim * 3u + 2u >= n.x) return;
     for (uint k = 0u; k < 3u; k++)
     {
-        uint b = (g.y + CxRtIndex(g.z + prim * 3u + k)) * g.w;
+        uint i = CxRtIndex(g.z + prim * 3u + k);
+        if (i >= n.y) return;
+        uint b = (g.y + i) * g.w;
         float wk = k == 0u ? 1.0 - bc.x - bc.y : k == 1u ? bc.x : bc.y;
         nrm += vec3(vb.v[b + 3u], vb.v[b + 4u], vb.v[b + 5u]) * wk;
         uv += vec2(vb.v[b + 6u], vb.v[b + 7u]) * wk;
@@ -102,7 +107,7 @@ bool CxRtTrace(vec3 o, vec3 dir, float perceptual, vec3 eye, out vec3 colour)
     vec3 lm = vec3(0.0);
 #ifdef CX_RT_LM
     // a charted copy's lightmap: every static lamp and torch the bake saw, as the lit stage reads it
-    if ((CxRtG(packUint2x32(uRtA.zw)).v[slot].x & CX_RT_BAKED) != 0u && uRtL.z > 0u)
+    if ((CxRtG(packUint2x32(uRtA.zw)).v[slot * 2u].x & CX_RT_BAKED) != 0u && uRtL.z > 0u)
     {
         vec4 rec = CxRtC(packUint2x32(uRtL.xy)).v[slot * 2u];
         if (rec.x >= 0.0) lm = textureLod(uRtLmA, vec3((rec.yz + chart * rec.w) / CX_RT_LM_PAGE, rec.x), 0.0).rgb;
