@@ -223,6 +223,7 @@ void main()
     float occl = screenAo;
     if ((slots & (CX_SLOT_NORMAL | CX_SLOT_HEIGHT)) != 0)
     {
+        bool ai = (slots & CX_SLOT_AIMAP) != 0;
         // CX-221: the frame the MESH supplied, from the arena's packed tangent word, or -- for a mesh
         // whose word is zero, which is how "no tangent pool" arrives -- a cotangent frame from
         // screen-space derivatives (Mikkelsen). The supplied one is per VERTEX and interpolated, so a
@@ -250,14 +251,14 @@ void main()
             // the gradients carry the bias a textureGrad tap cannot take
             float lodScale = pow(2.0, uLodBias);
             uv = CxDisplace(uv, mat3(T * inv, B * inv, N), V, vDepth, uTile.w * float(uGrid.y), du1 * lodScale, du2 * lodScale,
-                            vec2(d.amb.w, d.dif.w), CxDisplaceCap(uShaderQuality));
+                            vec2(d.amb.w, (d.dif.w != 0.0 ? d.dif.w : uRelief) * (ai ? uAiBump : 1.0)), CxDisplaceCap(uShaderQuality));
 #endif
             // inc_material.shd:307-311's SetupOcclusionFromTexture: the height against a blurrier tap of itself
             // IS the local self-occlusion, the blur shrinking with distance (OCCLUSION_VICINITT_RANGE 7.0
             // - log2 of the view depth), clamped to 0.9 and squared.
             float far = max(0.0, CX_OCCL_VICINITY - log2(max(vDepth, 1e-4)));
             float o = textureGrad(uHeightTex, uv, tapDx * exp2(far), tapDy * exp2(far)).r - textureGrad(uHeightTex, uv, tapDx, tapDy).r;
-            float a = 1.0 - clamp(o, 0.0, 0.9);
+            float a = 1.0 - clamp(o * (ai ? uAiBump : 1.0), 0.0, 0.9);
             surfAo = a * a;
             occl *= surfAo;
         }
@@ -265,6 +266,7 @@ void main()
         {
             vec3 nm;
             nm.xy = textureGrad(uNrmTex, uv, tapDx, tapDy).rg * 2.0 - 1.0;
+            if (ai) nm.xy *= uAiBump;
             nm.z = sqrt(max(1.0 - dot(nm.xy, nm.xy), 0.0));
             // 23 = the TANGENT-SPACE normal as sampled, before the frame touches it. Flat lavender
             //      means the map carries no signal (or is not the map we think it is), which viz 7

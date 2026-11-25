@@ -52,6 +52,8 @@ uniform vec4 uWaterSurf;       // water.surfaces, water.ripples, water.shine: pa
 uniform float uTileSeam;       // alloy.tileblend: how far ground leans to its face normal at a tile edge, 0 = off
 // NWN's tile, the band a seam's normals blend over (metres), the most they lean, and the ground's normal z at least
 const float CX_TILE_M = 10.0, CX_SEAM_INNER = 0.15, CX_SEAM_OUTER = 0.9, CX_SEAM_LEAN = 0.8, CX_SEAM_GROUND = 0.7;
+uniform float uRelief;         // light.relief: the parallax depth where a material sets none
+uniform float uAiBump;         // light.aibump: the strength of an AI-made normal and height map, 1 = as made
 uniform float uRim;            // light.rim: a creature's grazing-angle rim light, 0 = off
 /// The standing-water film's head-on reflectance where water.shine raises it over the dielectric's (cx_waterlook); 0 = stock.
 float cxFilmF0 = 0.0;

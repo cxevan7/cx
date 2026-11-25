@@ -109,6 +109,8 @@ internal static unsafe class Programs
         L.Contact = LooseBlock.Loc("uContact");
         L.SynthDetail = LooseBlock.Loc("uSynthDetail");
         L.Rim = LooseBlock.Loc("uRim");
+        L.Relief = LooseBlock.Loc("uRelief");
+        L.AiBump = LooseBlock.Loc("uAiBump");
         L.TileSeam = LooseBlock.Loc("uTileSeam");
         L.WaterSurf = LooseBlock.Loc("uWaterSurf");
         L.LightOcc = LooseBlock.Loc("uLightOcc");

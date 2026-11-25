@@ -500,6 +500,8 @@ public sealed unsafe partial class AlloyRenderer
                 LooseBlock.Set(L.Contact, [contact ? Shadows.Contact.V : 0f, ContactThickness]);
                 LooseBlock.Set(L.SynthDetail, Lighting.Detail.V);
                 LooseBlock.Set(L.Rim, Lighting.Rim.V);
+                LooseBlock.Set(L.Relief, Lighting.Relief.V);
+                LooseBlock.Set(L.AiBump, Lighting.AiBump.V);
                 LooseBlock.Set(L.TileSeam, Renderer.TileBlend.V);
                 LooseBlock.Set(L.WaterSurf, Water.Surfaces.V, Water.Ripples.V, Water.Shine.V, _capturing ? 0f : Weather.IceShown);
                 LooseBlock.Set(L.MirrorZ, _mirrorZ);

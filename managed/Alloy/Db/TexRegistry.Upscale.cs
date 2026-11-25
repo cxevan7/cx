@@ -110,7 +110,7 @@ internal static unsafe partial class TexRegistry
         u.Cov = j.Cov; u.CovWhy = j.CovWhy; u.Mean = j.Mean; u.MeanOk = j.MeanOk; u.BumpyShiny = j.BumpyShiny; u.EnvMap = j.EnvMap;
         u.Fast = false; u.Tail = false; u.Native = false; u.GridX = 1; u.GridY = 1; u.FullW = 0; u.Cycle = false;
         u.Pixels = null; u.Arturo = default; u.Ripple = null;
-        u.Upgrade = true; u.UpSource = level0.ToArray(); u.UpFmt = f; u.UpKey = UpscaleKey(level0, j, f);
+        u.Upgrade = true; u.Normal = false; u.Height = false; u.Rough = false; u.UpSource = level0.ToArray(); u.UpFmt = f; u.UpKey = UpscaleKey(level0, j, f);
         lock (_gate) { _inUp.Enqueue(u); Monitor.PulseAll(_gate); }
     }
 
