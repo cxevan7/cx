@@ -1,0 +1,2 @@
+# The keys a plugin index may be signed with (tools/plugins/sign-index.sh), one "name ssh-ed25519 base64" line each.
+# Empty by default: until a maintainer adds a key, only developer mode (plugins.developer) loads a plugin.

@@ -24,6 +24,9 @@ internal static unsafe partial class PostStack
         public int Rt = -1;
         /// <summary>The taa stage's precipitation terms; unused by every other stage.</summary>
         public TaaStage.WxLocs Wx = new(-1, PostChain.GradeLocs.None);
+        /// <summary>A plugin stage's uniform locations, in <see cref="PluginStage.Uniforms"/> order, and its debug label.</summary>
+        public int[] Plug = [];
+        public byte[]? Label;
     }
 
     /// <summary>The stack on one device, replaced whole with the device: the stages, the ping-pong pair, the velocity
@@ -32,6 +35,8 @@ internal static unsafe partial class PostStack
     {
         public VkBackend? Dev;
         public readonly StageVk[] Stages = NewStages();
+        /// <summary>One per <see cref="PluginStages.All"/> entry, grown when the registry is.</summary>
+        public StageVk[] Plugins = [];
         public ImageId A, B, Vel, Hist0, Hist1, FsrOut, FsrExposure;
         /// <summary>The history images' move-back count the resolve last saw: a move starts their contents over.</summary>
         public int HistMoves;
@@ -133,6 +138,17 @@ internal static unsafe partial class PostStack
                 taa |= st.Name == "taa";
                 live |= 1 << i;
             }
+        PluginStage[] plugs = PluginStages.All;
+        if (s.Plugins.Length != plugs.Length) s.Plugins = NewPluginStages(s.Plugins, plugs.Length);
+        uint plive = 0;
+        if (Post.Stack.V)
+            for (int j = 0; j < plugs.Length; j++)
+            {
+                if (!plugs[j].On.V) continue;
+                StageVk v = s.Plugins[j];
+                if (!v.Tried) BuildPlugin(vk, plugs[j], v, log);
+                if (v.P != null) plive |= 1u << j;
+            }
         if (missing != s.Missing)
         {
             s.Missing = missing;
@@ -150,7 +166,8 @@ internal static unsafe partial class PostStack
         Rect rect = new(display[0], display[1], dw, dh);
         // upsampling, as GL's Begin decides it: the pair and every stage but the last at render size
         s.Up = taa && PostChain.TaaUpsample && (viewport[2] != dw || viewport[3] != dh);
-        if (live != 0 && !Pair(vk, s, s.Up ? viewport[2] : dw, s.Up ? viewport[3] : dh, log)) { live = 0; taa = false; _targetBad = true; }
+        if ((live != 0 || plive != 0) && !Pair(vk, s, s.Up ? viewport[2] : dw, s.Up ? viewport[3] : dh, log))
+        { live = 0; plive = 0; taa = false; _targetBad = true; }
         TaaLive = taa;
         // the precipitation the scene held back: onto the upscaled frame, into the overlay the taa stage composites after its
         // resolve, or onto the scene's own frame when neither resolve ran after all
@@ -166,7 +183,7 @@ internal static unsafe partial class PostStack
         ImageId vel = taa || fsr ? s.Vel : default;
         PostChainVk.SkyInput sky = (fsr ? FsrSkyVk(vk, cl, depth, s.Vel, depthW, depthH, dw, dh, s.FsrReset, log)
                                         : new PostChainVk.SkyInput(depth)) with { Fogged = s.SkyFogged };
-        if (live == 0)
+        if (live == 0 && plive == 0)
         {
             if (fsr) MotionVectors.RollHistory();
             return PostChainVk.Record(vk, cl, hdr, sky, vk.Screen(), true, viewport, display, vel, log);
@@ -175,9 +192,27 @@ internal static unsafe partial class PostStack
         // the pair is exactly s.W x s.H and the resolve draws all of it, so nothing of the clear would survive
         if (!PostChainVk.Record(vk, cl, hdr, sky, s.A, false, viewport, pair, vel, log, LoadOp.DontCare)) return false;
         ImageId read = s.A, write = s.B;
-        int left = System.Numerics.BitOperations.PopCount((uint)live);
+        int left = System.Numerics.BitOperations.PopCount((uint)live) + System.Numerics.BitOperations.PopCount(plive);
         for (int i = 0; i < _stages.Length; i++)
         {
+            // the plugins grade the image the built-in stages leave, ahead of the anti-aliaser
+            if (i == TaaAt)
+                for (int j = 0; j < plugs.Length; j++)
+                {
+                    if ((plive & 1u << j) == 0) continue;
+                    StageVk pv = s.Plugins[j];
+                    bool plast = --left == 0;
+                    ImageId pinto = plast ? vk.Screen() : write;
+                    cl.BeginLabel(pv.Label ??= System.Text.Encoding.UTF8.GetBytes("plugin " + plugs[j].Id));
+                    PostChainVk.Open(pv.P!);
+                    LooseBlock.Set(pv.Dither, plast ? PostChain.DitherLsb : 0f);
+                    for (int u = 0; u < pv.Plug.Length; u++) LooseBlock.Set(pv.Plug[u], plugs[j].Uniforms[u].Value.V);
+                    int pat = PostChainVk.Close(cl, pv.P!);
+                    PostChainVk.Draw(cl, pv.P!, PostChainVk.FormatOf(pinto), PostChainVk.Blend.None, pinto, plast ? LoadOp.Clear : LoadOp.DontCare,
+                                     plast ? rect : new Rect(0, 0, s.W, s.H), pat, new PostChainVk.Inputs(read, default, depth), log);
+                    cl.EndLabel();
+                    (read, write) = (write, read);
+                }
             if ((live & 1 << i) == 0) continue;
             Stage st = _stages[i];
             StageVk v = s.Stages[i];
@@ -256,6 +291,28 @@ internal static unsafe partial class PostStack
             st.Failed = true;
             log.Always($"PostStack: the {st.Name} stage did not build on Vulkan (logged above) -- it sits the session out");
         }
+    }
+
+    /// <summary><paramref name="had"/>'s plugin stages kept and new ones added up to <paramref name="n"/>.</summary>
+    private static StageVk[] NewPluginStages(StageVk[] had, int n)
+    {
+        var a = new StageVk[n];
+        for (int i = 0; i < n; i++) a[i] = i < had.Length ? had[i] : new StageVk();
+        return a;
+    }
+
+    /// <summary>Plugin <paramref name="p"/>'s program: the stack's head and main around its body. A refusal is said once
+    /// and sits the plugin out for the session.</summary>
+    private static void BuildPlugin(VkBackend vk, PluginStage p, StageVk v, ExtenderLog log)
+    {
+        v.Tried = true;
+        v.P = PostChainVk.Program(vk, PostChain.FullscreenVs, PluginStages.Fragment(p), $"plugin {p.Id}", g =>
+        {
+            v.Dither = g.Loc("uDither");
+            v.Plug = new int[p.Uniforms.Length];
+            for (int u = 0; u < v.Plug.Length; u++) v.Plug[u] = g.Loc(p.Uniforms[u].Name);
+        }, log);
+        if (v.P == null) log.Always($"PostStack: the {p.Id} plugin's stage did not build on Vulkan (logged above) -- it sits the session out");
     }
 
     /// <summary>The stack's two half-float images: the display size, or the render size when upsampling.</summary>

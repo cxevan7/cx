@@ -96,6 +96,9 @@
        written by tools/update/, read through the "builds/" resource prefix. -->
   <ItemGroup>
     <EmbeddedResource Include="../packaging/allowed_signers" LogicalName="allowed_signers" />
+    <EmbeddedResource Include="../packaging/plugin_signers" LogicalName="plugin_signers" />
+    <EmbeddedResource Include="Services/Plugins/Fixtures/*" LogicalName="plugins/%(Filename)%(Extension)" WithCulture="false" />
+    <EmbeddedResource Include="../examples/plugins/vignette/*" LogicalName="plugins/vignette/%(Filename)" WithCulture="false" />
     <EmbeddedResource Include="Services/Update/Fixtures/*" LogicalName="update/%(Filename)%(Extension)" WithCulture="false" />
     <EmbeddedResource Include="Framework/Builds/*.tsv" LogicalName="builds/%(Filename)%(Extension)" />
   </ItemGroup>

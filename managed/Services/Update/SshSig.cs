@@ -48,6 +48,10 @@ internal static unsafe class SshSig
     /// <summary>The name of the key in <paramref name="keys"/> that signed <paramref name="message"/> under
     /// <see cref="Namespace"/>, or null with <paramref name="why"/> saying what failed.</summary>
     public static string? Verify(ReadOnlySpan<byte> message, string armored, ReleaseKey[] keys, out string why)
+        => Verify(message, armored, keys, Namespace, out why);
+
+    /// <summary>As <see cref="Verify(ReadOnlySpan{byte}, string, ReleaseKey[], out string)"/>, signed under <paramref name="space"/>.</summary>
+    public static string? Verify(ReadOnlySpan<byte> message, string armored, ReleaseKey[] keys, string space, out string why)
     {
         byte[]? blob = Unarmor(armored);
         if (blob == null) { why = "not an SSH signature"; return null; }
@@ -57,13 +61,13 @@ internal static unsafe class SshSig
         string? ns = r.Text(), reserved = r.Text(), hash = r.Text();
         var sig = new SshReader(r.Bytes() ?? []);
         if (pub.Text() != ReleaseKeys.Ed25519 || pub.Bytes() is not { } pk) { why = "not an Ed25519 signature"; return null; }
-        if (ns != Namespace) { why = $"signed for '{ns}', not '{Namespace}'"; return null; }
+        if (ns != space) { why = $"signed for '{ns}', not '{space}'"; return null; }
         if (hash != "sha512") { why = $"hash '{hash}' is not sha512"; return null; }
         if (sig.Text() != ReleaseKeys.Ed25519 || sig.Bytes() is not { Length: 64 } s || !r.Done) { why = "malformed signature"; return null; }
         ReleaseKey? key = null;
         foreach (ReleaseKey k in keys) if (k.Public.AsSpan().SequenceEqual(pk)) { key = k; break; }
         if (key == null) { why = "signed by a key CX does not know"; return null; }
-        byte[] signed = Signed(message, reserved ?? "");
+        byte[] signed = Signed(message, space, reserved ?? "");
         fixed (byte* sp = s, kp = pk, mp = signed)
             if (crypto_ed25519_check(sp, kp, mp, (nuint)signed.Length) != 0) { why = "the signature does not match"; return null; }
         why = "";
@@ -71,17 +75,24 @@ internal static unsafe class SshSig
     }
 
     /// <summary>What the key signs: the magic, the namespace, the reserved field, the hash name and the message's SHA-512.</summary>
-    private static byte[] Signed(ReadOnlySpan<byte> message, string reserved)
+    private static byte[] Signed(ReadOnlySpan<byte> message, string space, string reserved)
     {
-        byte[] digest = new byte[64];
-        fixed (byte* d = digest, m = message) crypto_sha512(d, m, (nuint)message.Length);
+        byte[] digest = Sha512(message);
         var w = new MemoryStream();
         w.Write("SSHSIG"u8);
-        Put(w, Encoding.ASCII.GetBytes(Namespace));
+        Put(w, Encoding.ASCII.GetBytes(space));
         Put(w, Encoding.ASCII.GetBytes(reserved));
         Put(w, "sha512"u8.ToArray());
         Put(w, digest);
         return w.ToArray();
+    }
+
+    /// <summary>The SHA-512 of <paramref name="message"/>.</summary>
+    public static byte[] Sha512(ReadOnlySpan<byte> message)
+    {
+        byte[] digest = new byte[64];
+        fixed (byte* d = digest, m = message) crypto_sha512(d, m, (nuint)message.Length);
+        return digest;
     }
 
     private static void Put(MemoryStream w, byte[] b)

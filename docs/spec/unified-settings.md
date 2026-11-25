@@ -850,6 +850,15 @@ ChatOnly master alone, so it has no submenu.
 | particles.shadows / sort / grid / guard / batch / sampler / diag / viz | — | T, S | as declared | C | batch / sampler R, rest L | — | shadowed particles (ladders on `quality.effects`), the GPU sort, the batch and sampler paths, the visualiser |
 | emitsim.enabled | Simulate particles in CX | T | on | **C** | L | — | cfg-only: CX moves, spawns and retires every particle. Off, nothing steps them -- they freeze where they are. |
 
+**Plugins** (`plugins`, order 900): the visual plugins in the `plugins` folder beside `cx.cfg` (`docs/spec/plugins.md`).
+Each plugin that loads declares a group of its own, `plugin_<id>`, under the same submenu: its master (off by default)
+and the sliders its manifest declares. Those keys come from the player's plugins folder, not from this tree.
+
+| key | label | kind | range · default | tier | eff | section | help |
+|---|---|---|---|---|---|---|---|
+| plugins.enabled | Plugins | T | on | U | R | — | Loads the visual plugins in the plugins folder beside cx.cfg. Each one still starts off and has its own switch below. Takes effect at the next start. |
+| plugins.developer | Load unsigned plugins | T | off | A | R | — | For plugin authors: loads plugins the signed index does not vouch for. Anything in the plugins folder then runs on your graphics card unchecked. |
+
 **Not panel content.** `view`, `models`, `mdl` and `dbtiles` declare ChatOnly knobs and a
 diagnostic `Status` only: `/view`, `/models`, `/mdl`, `/dbtiles` and `/knobs` are their whole
 surface. Their rows:
