@@ -97,6 +97,8 @@ public sealed unsafe partial class AlloyRenderer : IExtenderService
     /// <summary>The silhouette amount's field in the mask, <c>CX_SLOT_SILHOUETTE</c>: eight bits from this one up, above
     /// the palette bits, 255 a whole silhouette. Binds nothing; <see cref="Unseen.SlotMask"/> writes it.</summary>
     internal const int SilhouetteShift = 13, SilhouetteLevels = 255;
+    /// <summary>Mask bit <c>CX_SLOT_AIMAP</c>: the normal map (and any height map) was made by the AI from the diffuse.</summary>
+    internal const int AiMapBit = 1 << 21;
     /// <summary>Mask bit of palette slot <paramref name="k"/> (<c>texture7</c> is 0).</summary>
     internal static int PalSlotBit(int k) => PalBit0 << k;
     /// <summary>Texture unit slot 1 binds on; the rest follow it. Units 0/1/2 are diffuse, sun cascades and
@@ -150,7 +152,7 @@ public sealed unsafe partial class AlloyRenderer : IExtenderService
         public int Decal, DecalZ;   // CX-273: the decal layer's mode and the projection terms its depth test reads
         public int Solid;           // a wash's solid interior (Issue._solidPass)
         public RtLocs? Rt;          // alloy.raytrace / shadow.raytrace: the lit stage's ray terms (cx_rtlib.glsl)
-        public int Tex, Vp, Base, Cut, Viz, Ssao, SsaoOn, SsaoHalf, AoDirect, AoCutout, AoMapOff, Contact, SynthDetail, Rim, WaterSurf, Relief, TileSeam,
+        public int Tex, Vp, Base, Cut, Viz, Ssao, SsaoOn, SsaoHalf, AoDirect, AoCutout, AoMapOff, Contact, SynthDetail, Rim, WaterSurf, Relief, AiBump, TileSeam,
                    SunTex, SunDynTex, CubeTex, CubeCount, CubeDynTex,   // CX-43: the rest of the receiver and the light curve ride CxPass
                    Probe, Capture, MirrorZ,          // MirrorZ: CX-51 the planar mirror's plane
                    Weather, WeatherLook, CoverVp, CoverLayer, SnowLook, SnowLight, SnowPom, CoverEsm,

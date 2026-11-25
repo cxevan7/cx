@@ -931,7 +931,7 @@ internal static partial class DrawRecipe
             TexId id = string.IsNullOrEmpty(name) ? default : TexRegistry.Acquire(name, cuts: s == 0 && !additive);
             // light.ainormals: a map-less slot 1 takes the normal map the registry derives from the diffuse
             bool derived = s == NormalRecipeSlot && id.IsNull && DerivesNormal(r, nd, feat, additive);
-            if (derived) { id = TexRegistry.Acquire(TexName(r, 0), cell: TexRegistry.NormalCell); mask |= MaskBitOf(s, feat); }
+            if (derived) { id = TexRegistry.Acquire(TexName(r, 0), cell: TexRegistry.NormalCell); mask |= MaskBitOf(s, feat) | AlloyRenderer.AiMapBit; }
             // light.relief: its height map beside it, which the lit stage's parallax march reads
             // light.aimaterial: its roughness map, which the synthesis takes as declared content
             if (s == RoughRecipeSlot && id.IsNull && Lighting.AiMaterial.Boot && !Tex(r, NormalRecipeSlot).IsNull

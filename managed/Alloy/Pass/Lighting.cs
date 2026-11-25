@@ -9,7 +9,7 @@ namespace CX.Alloy;
 internal static class Lighting
 {
     internal static readonly KnobGroup G;
-    internal static readonly Knob<float> Gain, Ambient, Sun, Sky, Overbright, Sss, Wrap, WrapNdl, Hot, HotSize, Radius, Falloff, Detail, Rim, Relief,
+    internal static readonly Knob<float> Gain, Ambient, Sun, Sky, Overbright, Sss, Wrap, WrapNdl, Hot, HotSize, Radius, Falloff, Detail, Rim, Relief, AiBump,
                                          ProbeGain, BinReach, AmbientDir,
                                          Daylight, DayLow, DayHigh, Flicker, FlickerSpeed, SsrRough, Relevance, Floor, FullModel;
     internal static readonly Knob<int> Fadeout, ProbeSize, BinCap, SsrDetail, SsrPlanarRes;
@@ -146,6 +146,9 @@ internal static class Lighting
                                   + "stone and plaster stay matte while smooth flagstones, tiles and fittings catch a soft gloss.");
         Relief = G.Slider("relief", "Relief depth", 0f, 2f, 0.05f, 0.6f, tier: Tier.Advanced,
                           help: "How deep relief from height maps looks, where the material does not say. 1 is the stock depth; 0 is flat.");
+        AiBump = G.Slider("aibump", "AI surface bump strength", 0f, 1.5f, 0.05f, 1f, tier: Tier.Advanced,
+                          help: "How strongly AI-made normal and height maps shape the surface. Lower it if soft ground such as grass or "
+                              + "leaf litter looks lumpy; 1 is the map as made, 0 is flat.");
         LeafWind = G.Toggle("leafwind", "Leaves move in the wind", true, Tier.Advanced,
                             help: "Foliage found by Light through leaves sways gently, more at the edge of each canopy and more in a "
                                 + "windy area. Trees built to sway keep their own motion as well.",

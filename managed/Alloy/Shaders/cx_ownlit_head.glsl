@@ -53,9 +53,10 @@ uniform float uTileSeam;       // alloy.tileblend: how far ground leans to its f
 // NWN's tile, the band a seam's normals blend over (metres), the most they lean, and the ground's normal z at least
 const float CX_TILE_M = 10.0, CX_SEAM_INNER = 0.15, CX_SEAM_OUTER = 0.9, CX_SEAM_LEAN = 0.8, CX_SEAM_GROUND = 0.7;
 uniform float uRelief;         // light.relief: the parallax depth where a material sets none
-uniform float uRim;
+uniform float uAiBump;         // light.aibump: the strength of an AI-made normal and height map, 1 = as made
+uniform float uRim;            // light.rim: a creature's grazing-angle rim light, 0 = off
 /// The standing-water film's head-on reflectance where water.shine raises it over the dielectric's (cx_waterlook); 0 = stock.
-float cxFilmF0 = 0.0;            // light.rim: a creature's grazing-angle rim light, 0 = off
+float cxFilmF0 = 0.0;
 uniform vec2 uContact;         // shadow.contact: (ray length in metres, 0 = off; occluder thickness in metres)
 uniform mat4 uVP;              // the vertex stage's own view-projection (one loose block): the contact march projects with it
 uniform int uShaderQuality;    // the engine's SHADER_QUALITY_MODE
