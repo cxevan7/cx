@@ -42,7 +42,7 @@ internal static unsafe partial class TexRegistry
         lock (_lock)
             for (int i = 1; i < _high; i++)
             {
-                if (_resref[i] == null || _detached[i] || !_cuts[i] || _kind[i] == TexKind.Plt || _state[i] == TexState.Free) continue;
+                if (_resref[i] == null || _detached[i] || (!_cuts[i] && _kind[i] != TexKind.Plt) || _state[i] == TexState.Free) continue;
                 if (_refs[i] == 0) { Retire(i); continue; }
                 Reload(i);
             }
@@ -83,17 +83,65 @@ internal static unsafe partial class TexRegistry
     {
         if (!UpscaleWanted(j, f)) return false;
         ulong key = UpscaleKey(stored[..DdsReader.LevelSize(j.W, j.H, j.Channels)], j, f);
-        int factor = UpscaleFactor(j.W, j.H, AiWanted);
-        if (CacheFile.Read(UpscalePath(j.Resref, UpscaleKeyAi(key, AiWanted, factor))) is not { Length: > UpscaleHeader } blob) return false;
-        int w2 = BitConverter.ToInt32(blob, 0), h2 = BitConverter.ToInt32(blob, 4), levels = BitConverter.ToInt32(blob, 8);
-        if (w2 != j.W * factor || h2 != j.H * factor || levels != Levels(w2, h2)) return false;
-        var chain = new NativeBuffer<byte>();
-        chain.TakeExact(blob.Length - UpscaleHeader);
-        blob.AsSpan(UpscaleHeader).CopyTo(chain.Span);
+        if (!UpscaleCached(j, key, out int w2, out int h2, out int levels, out NativeBuffer<byte> chain)) return false;
         DdsReader.FreePrepared(j.Data);
         j.Data = chain.Pointer; j.Native = true;
         j.W = w2; j.H = h2; j.Levels = levels; j.Bytes = chain.Length;
         return true;
+    }
+
+    /// <summary><paramref name="key"/> with a source kind folded in.</summary>
+    private static ulong UpscaleKindOf(ulong key, ulong kind) => (key ^ kind) * 1099511628211UL;
+
+    /// <summary>The disk cache's rebuild of job <paramref name="j"/> under <paramref name="key"/>: its size, levels and chain,
+    /// copied into a native buffer the job takes. False when the cache holds none that fits the job's size.</summary>
+    private static bool UpscaleCached(Job j, ulong key, out int w2, out int h2, out int levels, out NativeBuffer<byte> chain)
+    {
+        chain = default;
+        w2 = h2 = levels = 0;
+        int factor = UpscaleFactor(j.W, j.H, AiWanted);
+        if (CacheFile.Read(UpscalePath(j.Resref, UpscaleKeyAi(key, AiWanted, factor))) is not { Length: > UpscaleHeader } blob) return false;
+        w2 = BitConverter.ToInt32(blob, 0); h2 = BitConverter.ToInt32(blob, 4); levels = BitConverter.ToInt32(blob, 8);
+        if (w2 != j.W * factor || h2 != j.H * factor || levels != Levels(w2, h2)) return false;
+        chain = new NativeBuffer<byte>();
+        chain.TakeExact(blob.Length - UpscaleHeader);
+        blob.AsSpan(UpscaleHeader).CopyTo(chain.Span);
+        return true;
+    }
+
+    /// <summary>Does alloy.upscale cover a TGA model texture of <paramref name="px"/> channels: colour, not data, one cell, no ripple.</summary>
+    private static bool UpscaleTgaWanted(Job j, int px)
+    {
+        int cap = Renderer.Upscale.V;
+        return cap > 0 && px is 3 or 4 && j.Cuts && !j.DataTexture && !j.Tail && !j.Upgrade && j.GridX * j.GridY <= 1 && !j.Cycle && !j.Arturo.On
+               && Math.Max(j.W, j.H) <= cap && Math.Min(j.W, j.H) >= UpscaleMinSide;
+    }
+
+    /// <summary>A decoded TGA job (<paramref name="sheet"/>, <paramref name="px"/> channels) swapped for its cached rebuild,
+    /// a BC chain, or queued for one; true when it was swapped. Its rebuild is BC3 with alpha and BC1 without.</summary>
+    private static bool UpscaleTga(Job j, ReadOnlySpan<byte> sheet, int px)
+    {
+        if (!UpscaleTgaWanted(j, px)) return false;
+        byte[] rgba = new byte[j.W * j.H * 4];
+        for (int i = 0, o = 0; o < rgba.Length; i += px, o += 4)
+        {
+            rgba[o] = sheet[i]; rgba[o + 1] = sheet[i + 1]; rgba[o + 2] = sheet[i + 2]; rgba[o + 3] = px == 4 ? sheet[i + 3] : (byte)255;
+        }
+        DdsReader.Fmt f = px == 4 ? DdsReader.Fmt.Bc3 : DdsReader.Fmt.Bc1;
+        ulong key = UpscaleKindOf(UpscaleKey(rgba, j, f), UpscaleKindTga);
+        if (!UpscaleCached(j, key, out int w2, out int h2, out int levels, out NativeBuffer<byte> chain)) { QueueUpgradeFrom(j, rgba, f, key); return false; }
+        NativeMemory.Free(j.Data);
+        j.Data = chain.Pointer; j.Native = true;
+        j.W = w2; j.H = h2; j.Levels = levels; j.Bytes = chain.Length;
+        BcChain(j, f);
+        return true;
+    }
+
+    /// <summary>Job <paramref name="j"/> now holds a full BC chain in format <paramref name="f"/>, however it was read.</summary>
+    private static void BcChain(Job j, DdsReader.Fmt f)
+    {
+        j.GlFmt = DdsReader.GlFormat(f); j.Compressed = true; j.GenMips = false; j.Chained = false;
+        j.Channels = f == DdsReader.Fmt.Bc3 ? 4 : 3;
     }
 
     /// <summary>A finished job alloy.upscale covers and the cache did not hold: its level 0 copied into a background
@@ -102,6 +150,14 @@ internal static unsafe partial class TexRegistry
     {
         if (j.Native || j.Why != null || !UpscaleWanted(j, f)) return;
         ReadOnlySpan<byte> level0 = stored[..DdsReader.LevelSize(j.W, j.H, j.Channels)];
+        QueueUpgradeFrom(j, level0.ToArray(), f, UpscaleKey(level0, j, f));
+    }
+
+    /// <summary>An upgrade of job <paramref name="j"/> from <paramref name="source"/> (DDS blocks, TGA RGBA or PLT pairs, by
+    /// the job's kind) under cache key <paramref name="key"/>, queued for <see cref="UpgradeWork"/>.</summary>
+    private static void QueueUpgradeFrom(Job j, byte[] source, DdsReader.Fmt f, ulong key)
+    {
+        if (j.Native || j.Why != null) return;
         Job u = Rent();
         u.Slot = j.Slot; u.Gen = j.Gen; u.Revision = j.Revision; u.Resref = j.Resref; u.Kind = j.Kind; u.Loc = j.Loc;
         u.Data = null; u.Chained = false; u.Cuts = j.Cuts; u.DataTexture = false; u.Why = null;
@@ -110,7 +166,7 @@ internal static unsafe partial class TexRegistry
         u.Cov = j.Cov; u.CovWhy = j.CovWhy; u.Mean = j.Mean; u.MeanOk = j.MeanOk; u.BumpyShiny = j.BumpyShiny; u.EnvMap = j.EnvMap;
         u.Fast = false; u.Tail = false; u.Native = false; u.GridX = 1; u.GridY = 1; u.FullW = 0; u.Cycle = false;
         u.Pixels = null; u.Arturo = default; u.Ripple = null;
-        u.Upgrade = true; u.Normal = false; u.Height = false; u.Rough = false; u.UpSource = level0.ToArray(); u.UpFmt = f; u.UpKey = UpscaleKey(level0, j, f);
+        u.Upgrade = true; u.Normal = false; u.Height = false; u.Rough = false; u.UpSource = source; u.UpFmt = f; u.UpKey = key;
         lock (_gate) { _inUp.Enqueue(u); Monitor.PulseAll(_gate); }
     }
 
@@ -118,10 +174,12 @@ internal static unsafe partial class TexRegistry
     /// <see cref="MipChain.Dds"/> keeps them), written to the disk cache, and left on the job for its upload.</summary>
     private static void UpgradeWork(Job j)
     {
+        if (j.Kind == TexKind.Plt) { PltWork(j); return; }
         DdsReader.Fmt f = j.UpFmt;
         bool bc3 = f == DdsReader.Fmt.Bc3;
         bool hard = j.Cov == TexCoverage.Cutout;
-        byte[] src = DecodeRgba(j.UpSource, j.W, j.H, f);
+        bool tga = j.Loc.ResType == TgaResType;
+        byte[] src = tga ? j.UpSource! : DecodeRgba(j.UpSource, j.W, j.H, f);
         j.UpSource = null;
         byte[] level = Upscale2x(src, j.W, j.H, !j.Clamp, hard);
         int factor = UpscaleFactor(j.W, j.H, true);
@@ -155,8 +213,9 @@ internal static unsafe partial class TexRegistry
         chainOut.CopyTo(chain.Span);
         j.Data = chain.Pointer; j.Native = true;
         string how = ai != null ? $"AI {AiModelNames[AiModelWanted]}, {factor}x, protect {UpscaleProtect:F2}" : "classic 2x";
-        j.UpNote = $"upscaled {j.W}x{j.H} -> {w2}x{h2} ({how})";
+        j.UpNote = $"upscaled {(tga ? "TGA " : "")}{j.W}x{j.H} -> {w2}x{h2} ({how})";
         j.W = w2; j.H = h2; j.Levels = levels; j.Bytes = chain.Length;
+        if (tga) BcChain(j, f);
     }
 
     /// <summary>Level 0 of a BC1 or BC3 image as RGBA8. The decoder answers BC1 as RGB, three bytes a texel (the engine
@@ -356,6 +415,7 @@ internal static unsafe partial class TexRegistry
             check.Expect(back[At(40, 20, 64, 3)] == 255 && (!bc3 || back[At(4, 20, 64, 3)] == 0),
                          $"{f}: alpha stays where it was through the round trip");
         }
+        PltUpscaleSelfCheck(check);
         log.Info(check.Ok ? "TexRegistry.UpscaleSelfCheck: passed" : "TexRegistry.UpscaleSelfCheck: FAILED");
         return check.Ok;
     }
