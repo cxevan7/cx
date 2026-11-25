@@ -147,6 +147,8 @@ internal static partial class DrawRecipe
         public int Spilled, TwinRefused, BoxGrown, Retired, Reclassified, RetiredInUse, DoubleRetire;
         /// <summary>Models evicted this period to make room in the table, beside the memory and texture budgets'.</summary>
         public int RoomEvicted;
+        /// <summary>Recipes found as painted water (<see cref="WaterLookOf"/>) and said on cx.log, to a cap.</summary>
+        public int WaterLogged;
         public string BoxGrownFirst;
     }
 
@@ -214,6 +216,8 @@ internal static partial class DrawRecipe
     private static readonly int[] _content = new int[Max];
     /// <summary>Each recipe's foliage class (<see cref="LeafOf"/>), re-asked with its class in <see cref="TxiWords"/>.</summary>
     private static readonly byte[] _leaf = new byte[Max];
+    /// <summary>Each recipe's water look (<see cref="WaterLookOf"/>), re-asked with its class in <see cref="TxiWords"/>.</summary>
+    private static readonly bool[] _waterLook = new bool[Max];
     /// <summary>Why an alpha-tested recipe is no leaf (<see cref="LeafWhyContent"/>, <see cref="LeafWhyOther"/>), for /alloy viz 55.</summary>
     private static readonly byte[] _leafWhy = new byte[Max];
     /// <summary>An alpha-tested recipe refused as a leaf: not refused, drawn by a content pair's own stage, or another reason.</summary>
@@ -336,6 +340,7 @@ internal static partial class DrawRecipe
         _flags[r] = flags;
         _leaf[r] = LeafNone;
         _leafWhy[r] = LeafWhyNone;
+        _waterLook[r] = false;
         return r;
     }
 
@@ -613,10 +618,11 @@ internal static partial class DrawRecipe
             }
             bool additive = mesh.RenderHint.Equals("additive", StringComparison.OrdinalIgnoreCase);
             byte wasCls = _cls[r], wasDst = _dst[r], wasLeaf = _leaf[r], wasWhy = _leafWhy[r];
+            bool wasWater = _waterLook[r];
             RecipeFlag wasFlags = _flags[r];
             TxiWords(r, additive, mesh.TransparencyHint > 0);
             if (TexRegistry.BumpyShiny(new TexId(_texId[r * TexSlots]))) _flags[r] |= RecipeFlag.RotateTexture;
-            if (_cls[r] == wasCls && _flags[r] == wasFlags && _dst[r] == wasDst && _leaf[r] == wasLeaf && _leafWhy[r] == wasWhy) continue;
+            if (_cls[r] == wasCls && _flags[r] == wasFlags && _dst[r] == wasDst && _leaf[r] == wasLeaf && _leafWhy[r] == wasWhy && _waterLook[r] == wasWater) continue;
             if (_cls[r] != wasCls) _own.Counts.Reclassified++;
             // ...and a content recipe whose state moved names pipeline keys the prewarm has not seen
             if (ShaderFeatures.IsContent(_feat[r])) System.Threading.Interlocked.Increment(ref _own.ContentSerial);
@@ -661,7 +667,74 @@ internal static partial class DrawRecipe
         if (DrawsBackFaces(_own.FaceTerms[r], additive, (AlloyClass)_cls[r])) _flags[r] |= RecipeFlag.TwoSided;
         else _flags[r] &= ~RecipeFlag.TwoSided;
         _leaf[r] = LeafOf(r);
+        bool wasWater = _waterLook[r];
+        _waterLook[r] = WaterLookOf(r);
+        if (_waterLook[r] && !wasWater && System.Threading.Interlocked.Increment(ref _own.Counts.WaterLogged) <= WaterLogCap)
+            Log?.Always($"DrawRecipe: painted water found -- texture '{TexName(r, 0)}' on {_model[r]?.Name} "
+                        + (WaterFaces(_mesh[r]!) ? "(water material)" : TexRegistry.TxiRipple(Tex(r, 0)) ? "(ripple .txi)" : "(by name)"));
     }
+
+    private const int WaterLogCap = 20;
+
+    /// <summary>Words in a texture or node name that say water.</summary>
+    private static readonly string[] WaterWords = ["water", "pond", "river", "stream", "lake", "swamp", "marsh", "puddle"];
+    private static readonly string[] WaterFalseWords = ["waterfall", "fall"];
+
+    /// <summary>Is recipe <paramref name="r"/> a water surface the engine draws as plain paint: a lit, upward-facing, static
+    /// part whose diffuse is an arturo ripple or whose name says water, and that the water class does not already draw.</summary>
+    private static bool WaterLookOf(int r)
+    {
+        MeshDef? mesh = _mesh[r];
+        ModelDef? model = _model[r];
+        if (mesh == null || model == null || (uint)_node[r] >= (uint)model.Nodes.Length) return false;
+        RecipeFlag f = _flags[r];
+        // a tileset's animated water mesh counts (the layer is per fragment), and a few banked faces do not disqualify it
+        if (_cls[r] == (byte)AlloyClass.Water || (f & RecipeFlag.Lit) == 0 || !MostlyUp(mesh)
+            || (f & (RecipeFlag.Skinned | RecipeFlag.Dangly)) != 0 || ShaderFeatures.IsContent(_feat[r]))
+            return false;
+        return WaterFaces(mesh) || TexRegistry.TxiRipple(Tex(r, 0)) || WaterName(TexName(r, 0)) || WaterName(model.Nodes[_node[r]].Name);
+    }
+
+    /// <summary>surfacemat.2da's water rows: Water 6, Puddles 11, Swamp 12, DeepWater 17. ponytail: stock row ids, as
+    /// TileBuild.Blank's are.</summary>
+    private const ulong WaterSurfaces = (1UL << 6) | (1UL << 11) | (1UL << 12) | (1UL << 17);
+
+    /// <summary>How far a water sheet may rise across its extent, metres, and how level its normals must be: the material
+    /// tags the bed and the shallows under real water too, and those slope.</summary>
+    private const float WaterSheetRise = 0.05f, WaterSheetUp = 0.98f;
+
+    /// <summary>Does at least half of <paramref name="mesh"/>'s faces carry a water material -- the tileset's own word --
+    /// on a level sheet, which is what a water surface is and a riverbed or beach under one is not?</summary>
+    private static bool WaterFaces(MeshDef mesh)
+    {
+        if (mesh.BMax.Z - mesh.BMin.Z > WaterSheetRise) return false;
+        foreach (Vector3 n in mesh.Normals) if (!(n.Z >= WaterSheetUp * n.Length())) return false;
+        int water = 0;
+        foreach (FaceDef f in mesh.Faces)
+            if ((uint)f.Surface < 64 && ((WaterSurfaces >> f.Surface) & 1UL) != 0) water++;
+        return mesh.Faces.Length > 0 && water * 2 >= mesh.Faces.Length;
+    }
+
+    /// <summary>The share of a water mesh's normals that must face up (within <see cref="UpCos"/>).</summary>
+    private const float WaterUpShare = 0.8f;
+
+    private static bool MostlyUp(MeshDef mesh)
+    {
+        int up = 0;
+        foreach (Vector3 n in mesh.Normals) if (n.Z >= UpCos * n.Length()) up++;
+        return mesh.Normals.Length > 0 && up >= WaterUpShare * mesh.Normals.Length;
+    }
+
+    private static bool WaterName(string? name)
+    {
+        if (string.IsNullOrEmpty(name)) return false;
+        foreach (string no in WaterFalseWords) if (name.Contains(no, StringComparison.OrdinalIgnoreCase)) return false;
+        foreach (string w in WaterWords) if (name.Contains(w, StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
+    }
+
+    /// <summary>Is recipe <paramref name="r"/> a water surface drawn as paint (water.surfaces)?</summary>
+    internal static bool WaterLook(int r) => (uint)r < Max && _waterLook[r];
 
     /// <summary>Recipe <paramref name="r"/>'s foliage class, read off what the content already says: no tag, no
     /// edit to a model or texture. A thin card is a lit, alpha-TESTED part whose diffuse measured as a binary cutout;

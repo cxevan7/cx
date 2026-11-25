@@ -803,6 +803,8 @@ empty unless the device refused the effect, then "Depth of field is off for this
 | weather.accum | Soak / settle time | S | 5–600 s step 5 · 60 | A | L | Surfaces | Seconds of full-density weather to fully wet or snow the ground. |
 | weather.dry | Dry-out time | S | 10–1800 s step 10 · 180 | A | L | Surfaces | Seconds for wet ground to dry after the rain stops. |
 | weather.melt | Melt time | S | 30–7200 s step 30 · 900 | A | L | Surfaces | Seconds for snow cover to melt after the snowfall ends. |
+| weather.ice | Freezing water | S | 0–1 step 0.05 · 1 | A | L | Surfaces | Ponds, streams and pools freeze while it snows: frost gathers along the banks, then ice creeps across the water, stilling its ripples. They thaw once the snow has gone, faster in rain. 0 = off. |
+| weather.freeze | Freeze time | S | 30–3600 s step 30 · 300 | A | L | Surfaces | Seconds of full snowfall to freeze water over completely; thawing takes the melt time. |
 | weather.puddles | Puddles | S | 0–1 step 0.05 · 0.5 | A | L | Surfaces | How much of level ground pools in the rain: low is a few small pools in the dips, high is broad sheets. A server may set it for its own areas. |
 | weather.impacts | Splash impacts | S | 0–1 step 0.05 · 0.6 | A | L | Impacts | Water leaps where each drop lands -- on the ground, on roofs, on ledges, wherever the rain reaches. 0 = off. Ladders on `quality.weather`. |
 | weather.wetsteps | Wet footstep sounds | T | on | A | L | — | Steps on rain-wet ground make the game's own puddle sound for that creature, until the ground dries. Not under a roof. |
@@ -835,6 +837,11 @@ empty unless the device refused the effect, then "Depth of field is off for this
 | vfog.temporal / lightshadows | — | S, T | as declared | C | L | — | the share of past frames the volume keeps, and lamps' shadows in the fog |
 | silhouette.enabled | Silhouettes for creatures out of sight | T | **off** | U | L | — | A creature your character hears but does not see draws as a solid dark shape, so it reads apart from one under Invisibility. Off, the default, draws them see-through as the stock client does. |
 | water.enabled | Water | T | on | **C** | L | — | cfg-only: draw water (the stock water shader, reflecting the finished frame). Off, no water is drawn at all -- there is no stock water pass left behind it. |
+| water.surfaces | Water on painted water | S | 0–1 step 0.05 · 1 | A | L | — | Ponds and streams that the game draws as a flat painted texture -- a rippling water texture, or one named as water -- get a water surface over the paint: moving ripples, reflections and the rain's rings. 0 leaves them as painted. |
+| water.clarity | Water clarity | S | 0–1 step 0.05 · 0.6 | A | L | — | Water is clear where it is shallow, showing its bed, and takes on its own colour as it deepens. 0 is the stock look, where water whose texture is solid shows no bed at all. |
+| water.shore | Soft shorelines and foam | S | 0–1 step 0.05 · 0.5 | A | L | — | The water's edge fades into the bank instead of ending in a hard line, with a thin broken foam line along it. 0 is the stock hard edge. |
+| water.ripples | Fine ripples | S | 0–1 step 0.05 · 0.5 | A | L | — | Small moving ripples over the stock waves, so still water in a calm area still moves and catches the light. 0 is the stock surface. |
+| water.shine | Reflection strength | S | 0–1 step 0.05 · 0.35 | A | L | — | How strongly water reflects what is around it when seen head-on. Real water reflects little straight down and almost everything at a glancing angle; 0 is that physical amount alone. |
 | water.rect | — | T | as declared | C | L | — | |
 
 **Motion** — groups `anim` (350, *Animation*), `dangly` (352, *Cloaks and hair*), `particles`

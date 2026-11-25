@@ -224,7 +224,7 @@
         vec3 cenv = CxProbeFetch(uProbe, vWorld, reflect(-V, N), sqrt(cxCoatRough) * (uProbeMips - 1.0));
         // CX-188 split this out of the += so the twin can carry the factor as a transfer weight; it is the
         // same product, parenthesised
-        vec3 cw = cenv * (cxCoat * (CX_DIELECTRIC_F0 * cab.x + cab.y)
+        vec3 cw = cenv * (cxCoat * (max(CX_DIELECTRIC_F0, cxFilmF0) * cab.x + cab.y)
                   * CxSpecOcclusion(NoV, occl, cxCoatRough)) * uProbeGain;
         specLight += (ambient + diffuse) * cw;
 #ifdef CX_DEFERRED

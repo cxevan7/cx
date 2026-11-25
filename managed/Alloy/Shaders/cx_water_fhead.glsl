@@ -41,6 +41,8 @@ uniform mat4 uProj;
 // every phase from it, so a module running time at 30x real gets vanilla's own fast sea, not a
 // corrected one.
 uniform int uViz;
+uniform float uWaterIce;        // weather.ice: 0 open water to 1 frozen over
+uniform vec4 uWaterLook;       // water.clarity, water.shore, water.ripples, water.shine; 0 each = stock
 uniform int uCapture;
 uniform float uAlphaCut;
 out vec4 frag;

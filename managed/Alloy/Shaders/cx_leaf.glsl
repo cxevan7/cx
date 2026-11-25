@@ -4,6 +4,8 @@
 // > 0 foliage that sways, its canopy radius; <= CX_LEAF_STILL foliage that does not, radius CX_LEAF_STILL - code.
 // Needs cx_drawbuf (CxDraw) and cx_featdecl (CxClock, uAreaWind) first.
 #define CX_LEAF_STILL -10.0
+// water.surfaces: painted water, a code no leaf range reaches (AlloyRenderer.WaterLookCode)
+#define CX_WATER_LOOK -5.0
 #define CX_SWAY_AMP 0.035        // metres a leaf at the canopy's rim travels in still air
 #define CX_SWAY_WIND 2.0         // ...times this much more in a full area wind
 
