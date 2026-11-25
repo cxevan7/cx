@@ -26,3 +26,12 @@ tools/*/obj/
 local.env
 *.spv
 /managed/Core/Tests/bin/
+
+# Third-party binaries kept out of the repository by licence: ONNX Runtime + DirectML and the AI models
+# (DeepBump is GPL-3). build-win.sh reads them from here.
+build/deps/AI/
+*.onnx
+*.pth
+*.nupkg
+onnxruntime*.dll
+DirectML.dll
