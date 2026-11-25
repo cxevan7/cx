@@ -212,6 +212,27 @@ internal static partial class DrawRecipe
     /// <summary>The material's content-program key (<see cref="GuiContent.Key"/>; 0 = none), which a GUI part draws
     /// through. Re-read with the other late material terms.</summary>
     private static readonly int[] _content = new int[Max];
+    /// <summary>Each recipe's foliage class (<see cref="LeafOf"/>), re-asked with its class in <see cref="TxiWords"/>.</summary>
+    private static readonly byte[] _leaf = new byte[Max];
+    /// <summary>Why an alpha-tested recipe is no leaf (<see cref="LeafWhyContent"/>, <see cref="LeafWhyOther"/>), for /alloy viz 55.</summary>
+    private static readonly byte[] _leafWhy = new byte[Max];
+    /// <summary>An alpha-tested recipe refused as a leaf: not refused, drawn by a content pair's own stage, or another reason.</summary>
+    internal const byte LeafWhyNone = 0, LeafWhyContent = 1, LeafWhyOther = 2;
+
+    /// <summary>The foliage classes a recipe can carry: none, a thin cut-out card (light passes through it from
+    /// behind), or foliage proper (also shaded as one rounded canopy).</summary>
+    internal const byte LeafNone = 0, LeafThin = 1, LeafFoliage = 2;
+    /// <summary>Name fragments stock and community foliage carries in its texture, node or model name. One vote,
+    /// never the verdict alone: a name is the builder's habit, not a measurement.</summary>
+    private static readonly string[] LeafWords =
+        ["leaf", "leav", "foli", "tree", "bush", "shrub", "hedge", "ivy", "vine", "fern", "frond", "branch", "canop", "willow"];
+    /// <summary>Words that hold a <see cref="LeafWords"/> fragment and name no plant.</summary>
+    private static readonly string[] LeafFalseWords = ["street", "ravine", "divine"];
+    /// <summary>A leafy mean colour: green over red by this much, and over blue by <see cref="LeafGreenOverBlue"/>.
+    /// Measured over the whole diffuse, holes included, so the ratios matter rather than the level.</summary>
+    private const float LeafGreenOverRed = 0.95f, LeafGreenOverBlue = 1.2f, LeafWarmOverBlue = 1.5f;
+    /// <summary>Votes a thin card needs to be foliage: a dangly mesh is two, a leafy name and a leafy colour one each.</summary>
+    private const int LeafVotesDangly = 2, LeafVotesNeeded = 2;
 
     /// <summary>Recipes in use: the slots ever handed out, less the retired ones waiting or free.</summary>
     internal static int Count => _n - _own.Free.Count - _own.Retiring.Count - _own.Cooling.Count;
@@ -313,6 +334,8 @@ internal static partial class DrawRecipe
         // a real range index, which Retire would hand back out from under its owner.
         _range[r] = -1;
         _flags[r] = flags;
+        _leaf[r] = LeafNone;
+        _leafWhy[r] = LeafWhyNone;
         return r;
     }
 
@@ -589,11 +612,11 @@ internal static partial class DrawRecipe
                 _declWater[r] = DeclaredWater(mesh);
             }
             bool additive = mesh.RenderHint.Equals("additive", StringComparison.OrdinalIgnoreCase);
-            byte wasCls = _cls[r], wasDst = _dst[r];
+            byte wasCls = _cls[r], wasDst = _dst[r], wasLeaf = _leaf[r], wasWhy = _leafWhy[r];
             RecipeFlag wasFlags = _flags[r];
             TxiWords(r, additive, mesh.TransparencyHint > 0);
             if (TexRegistry.BumpyShiny(new TexId(_texId[r * TexSlots]))) _flags[r] |= RecipeFlag.RotateTexture;
-            if (_cls[r] == wasCls && _flags[r] == wasFlags && _dst[r] == wasDst) continue;
+            if (_cls[r] == wasCls && _flags[r] == wasFlags && _dst[r] == wasDst && _leaf[r] == wasLeaf && _leafWhy[r] == wasWhy) continue;
             if (_cls[r] != wasCls) _own.Counts.Reclassified++;
             // ...and a content recipe whose state moved names pipeline keys the prewarm has not seen
             if (ShaderFeatures.IsContent(_feat[r])) System.Threading.Interlocked.Increment(ref _own.ContentSerial);
@@ -637,7 +660,54 @@ internal static partial class DrawRecipe
         // ponytail: volumetric's back-then-front is drawn as cull-off, exact under weighted OIT; alloy.oit 0 needs a front-culled draw first
         if (DrawsBackFaces(_own.FaceTerms[r], additive, (AlloyClass)_cls[r])) _flags[r] |= RecipeFlag.TwoSided;
         else _flags[r] &= ~RecipeFlag.TwoSided;
+        _leaf[r] = LeafOf(r);
     }
+
+    /// <summary>Recipe <paramref name="r"/>'s foliage class, read off what the content already says: no tag, no
+    /// edit to a model or texture. A thin card is a lit, alpha-TESTED part whose diffuse measured as a binary cutout;
+    /// foliage is a thin card that also wins <see cref="LeafVotesNeeded"/> votes (dangly, a leafy name, a leafy
+    /// colour). Creatures are filtered per record (<c>DbWriteLeaf</c>), where the attachment chain is known.</summary>
+    private static byte LeafOf(int r)
+    {
+        _leafWhy[r] = LeafWhyNone;
+        MeshDef? mesh = _mesh[r];
+        ModelDef? model = _model[r];
+        if (mesh == null || model == null || (uint)_node[r] >= (uint)model.Nodes.Length) return LeafNone;
+        if (_cls[r] != (byte)AlloyClass.Cutout) return LeafNone;
+        RecipeFlag f = _flags[r];
+        TexId diffuse = Tex(r, 0);
+        // alpha-TESTED, hard or soft edged: a graded diffuse still draws through the cutout class
+        TexCoverage cov = TexRegistry.Coverage(diffuse);
+        bool refused = cov is not (TexCoverage.Cutout or TexCoverage.Blended)
+                       || (f & RecipeFlag.Lit) == 0 || (f & (RecipeFlag.Wash | RecipeFlag.AnimMesh)) != 0
+                       // a true skin is a body; a dangly node carries Skinned too when rigged, and a tree's leaves are often that
+                       || (f & RecipeFlag.Skinned) != 0 && (f & RecipeFlag.Dangly) == 0
+                       || (model.Classification & HitTest.ClassEffect) != 0;
+        if (ShaderFeatures.IsContent(_feat[r])) { _leafWhy[r] = LeafWhyContent; return LeafNone; }
+        if (refused) { _leafWhy[r] = LeafWhyOther; return LeafNone; }
+        int votes = (f & RecipeFlag.Dangly) != 0 ? LeafVotesDangly : 0;
+        if (LeafName(TexName(r, 0)) || LeafName(model.Nodes[_node[r]].Name) || LeafName(model.Name)) votes++;
+        if (TexRegistry.TryMean(diffuse, out Vector3 m) && LeafHue(m)) votes++;
+        return votes >= LeafVotesNeeded ? LeafFoliage : LeafThin;
+    }
+
+    /// <summary>A leafy mean colour: green, or an autumn red, orange or yellow -- warm well above blue.</summary>
+    private static bool LeafHue(Vector3 m)
+        => m.Y > m.X * LeafGreenOverRed && m.Y > m.Z * LeafGreenOverBlue || MathF.Max(m.X, m.Y) > m.Z * LeafWarmOverBlue;
+
+    /// <summary>Does <paramref name="name"/> carry a foliage word that is not part of a known non-plant word?</summary>
+    private static bool LeafName(string? name)
+    {
+        if (string.IsNullOrEmpty(name)) return false;
+        foreach (string no in LeafFalseWords) if (name.Contains(no, StringComparison.OrdinalIgnoreCase)) return false;
+        foreach (string w in LeafWords) if (name.Contains(w, StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
+    }
+
+    /// <summary>Recipe <paramref name="r"/>'s foliage class: <see cref="LeafNone"/>, <see cref="LeafThin"/> or <see cref="LeafFoliage"/>.</summary>
+    internal static byte Leaf(int r) => (uint)r < Max ? _leaf[r] : LeafNone;
+    /// <summary>Why recipe <paramref name="r"/> is no leaf although it is alpha-tested, or <see cref="LeafWhyNone"/>.</summary>
+    internal static byte LeafWhy(int r) => (uint)r < Max ? _leafWhy[r] : LeafWhyNone;
 
     private static int _classSerial = -1;
     private static bool _classWater;

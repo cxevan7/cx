@@ -301,12 +301,13 @@ public sealed unsafe partial class AlloyRenderer
         bool cutMoved = OccludeFan.Stamp(ref r.Occ, part, _gate[i].OccFade);
         bool stale = _gate[i].RecGen != _recEpoch || _gate[i].RecEnroll != _gate[i].EnrollGen;
         if (stale) DbWriteStable(ref r, i);
+        bool leafMoved = DbWriteLeaf(ref r, i);
         // #302, as the engine path: the mover level wants GEOMETRY motion compared before the write consumes it,
         // not "the record was re-sent" -- alpha, ambient and reveal rewrites charged as movers re-bake shadows.
         var (casterMoved, moverMoved) = MoveLevels(in r.Model, in f.Model);
         int why = RecWhy(in r, in f, moverMoved) | (stale ? 1 << RecWhyStale : 0) | (revealMoved ? 1 << RecWhyReveal : 0) | (cutMoved ? 1 << RecWhyAlpha : 0);
         bool rec = WritePerFrame(ref r, in f, roll: _gate[i].RecFrame != _frameSeq, fresh: stale);
-        rec |= stale | revealMoved | cutMoved;
+        rec |= stale | revealMoved | cutMoved | leafMoved;
         if (rec)
         {
             DbWriteWorldBox(i, recipe, in f.Model);
