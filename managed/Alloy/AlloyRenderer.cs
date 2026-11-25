@@ -149,7 +149,7 @@ public sealed unsafe partial class AlloyRenderer : IExtenderService
         public int Oit, OitDim, OitGob, LightRecOn;
         public int Decal, DecalZ;   // CX-273: the decal layer's mode and the projection terms its depth test reads
         public int Solid;           // a wash's solid interior (Issue._solidPass)
-        public int Tex, Vp, Base, Cut, Viz, Ssao, SsaoOn, SsaoHalf, AoDirect, AoCutout, AoMapOff,
+        public int Tex, Vp, Base, Cut, Viz, Ssao, SsaoOn, SsaoHalf, AoDirect, AoCutout, AoMapOff, Contact, SynthDetail, Rim,
                    SunTex, SunDynTex, CubeTex, CubeCount, CubeDynTex,   // CX-43: the rest of the receiver and the light curve ride CxPass
                    Probe, Capture, MirrorZ,          // MirrorZ: CX-51 the planar mirror's plane
                    Weather, WeatherLook, CoverVp, CoverLayer, SnowLook, SnowLight, SnowPom, CoverEsm,
@@ -165,6 +165,9 @@ public sealed unsafe partial class AlloyRenderer : IExtenderService
     /// (a puddle 0.12; wet ground's 0.35 is not) and takes the source's shadow whatever the cube cap says; a rougher
     /// lobe keeps the lightmap's, which only the pages have exact. Faded in from half of it (CxGlossW).</summary>
     internal const float GlossyRough = 0.25f;
+    /// <summary>shadow.contact's occluder thickness in metres: depth this far in front of the ray blocks it, anything
+    /// deeper is a surface behind, not a blocker.</summary>
+    internal const float ContactThickness = 0.3f;
     /// <summary>THIS pass's eye, from the inverse of the view matrix the pass is drawing with. Never
     /// <c>FrameInputs.CameraPos</c> -- that belongs to whichever pass set a view last -- and taken per pass
     /// rather than from the scene latch, so a reflection subframe reflects from its own camera.</summary>

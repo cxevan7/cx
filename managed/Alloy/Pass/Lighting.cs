@@ -9,7 +9,7 @@ namespace CX.Alloy;
 internal static class Lighting
 {
     internal static readonly KnobGroup G;
-    internal static readonly Knob<float> Gain, Ambient, Sun, Sky, Overbright, Sss, Wrap, WrapNdl, Hot, HotSize, Radius, Falloff,
+    internal static readonly Knob<float> Gain, Ambient, Sun, Sky, Overbright, Sss, Wrap, WrapNdl, Hot, HotSize, Radius, Falloff, Detail, Rim,
                                          ProbeGain, BinReach, AmbientDir,
                                          Daylight, DayLow, DayHigh, Flicker, FlickerSpeed, SsrRough, Relevance, Floor, FullModel;
     internal static readonly Knob<int> Fadeout, ProbeSize, BinCap, SsrDetail, SsrPlanarRes;
@@ -131,6 +131,11 @@ internal static class Lighting
         SpecAa = G.Toggle("specaa", "Smooth highlights", true, Tier.ChatOnly,
                           help: "Widens a highlight that is narrower than a pixel, so glossy and normal-mapped surfaces do not sparkle "
                               + "or crawl in motion. Needs Modern materials.");
+        Detail = G.Slider("detail", "Surface detail on plain textures", 0f, 1f, 0.05f, 0f, tier: Tier.Advanced,
+                          help: "Surfaces with only a colour texture -- most stock content -- get a gentle bump read from that texture's "
+                              + "light and dark, up close. Painted shadows can read as dents, so it is off by default; 0.3 to 0.5 is a good start.");
+        Rim = G.Slider("rim", "Character rim light", 0f, 1f, 0.05f, 0.25f, tier: Tier.Advanced,
+                       help: "Creatures catch the light along their silhouettes, so they stand out from busy backgrounds. 0 is off.");
         G.Section("");
         BinReach = G.Slider("binreach", "Light reach", 0.1f, 4f, 0.05f, 0.8f, tier: Tier.ChatOnly,
                             help: "Fraction of each light's authored radius that lights the scene. 1 is the stock radius; lower is cheaper.")
