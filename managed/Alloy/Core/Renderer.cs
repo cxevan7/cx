@@ -12,7 +12,7 @@ namespace CX.Alloy;
 internal static class Renderer
 {
     internal static readonly KnobGroup G;
-    internal static readonly Knob<bool> Enabled, UpscaleAi, Smooth;
+    internal static readonly Knob<bool> Enabled, UpscaleAi, Smooth, RayTrace;
     internal static readonly Knob<float> TileBlend;
     /// <summary>Is Alloy drawing this session? Then it draws the CX scene database (ADR 0028) and no engine
     /// <c>Scene</c>/<c>Gob</c>/<c>Part</c> exists. Off is vanilla, whole: a refused Vulkan probe or a seam that stood
@@ -182,6 +182,10 @@ internal static class Renderer
                                   changed: CX.Alloy.Db.TexRegistry.UpscaleChanged,
                                   help: "How far flat gradients keep the classic upscale, where an AI model can invent ripples. 0 takes the "
                                       + "AI everywhere, sharpest on soft textures; 1 protects every smooth area.");
+        RayTrace = G.Toggle("raytrace", "Ray-traced reflections", true, Tier.Advanced, Effect.Restart,
+                            help: "On a graphics card with ray tracing (NVIDIA RTX, recent AMD or Intel), reflections in water, wet ground "
+                                + "and polished surfaces show what is really around them -- off screen and behind the camera included -- "
+                                + "where screen-space reflection runs out. Elsewhere the reflections stay as they are.");
         TileBlend = G.Slider("tileblend", "Blend ground across tile edges", 0f, 1f, 0.05f, 1f, tier: Tier.Advanced,
                              help: "Where two tiles' ground textures meet on the area's 10 m grid, they blend into each other over a "
                                  + "ragged band instead of meeting in a ruled line. Ground only: walls, props and figures keep their edges. "

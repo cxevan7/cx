@@ -151,6 +151,7 @@ public sealed unsafe partial class AlloyRenderer : IExtenderService
         public int Oit, OitDim, OitGob, LightRecOn;
         public int Decal, DecalZ;   // CX-273: the decal layer's mode and the projection terms its depth test reads
         public int Solid;           // a wash's solid interior (Issue._solidPass)
+        public RtLocs? Rt;          // alloy.raytrace / shadow.raytrace: the lit stage's ray terms (cx_rtlib.glsl)
         public int Tex, Vp, Base, Cut, Viz, Ssao, SsaoOn, SsaoHalf, AoDirect, AoCutout, AoMapOff, Contact, SynthDetail, Rim, WaterSurf, Relief, AiBump, TileSeam,
                    SunTex, SunDynTex, CubeTex, CubeCount, CubeDynTex,   // CX-43: the rest of the receiver and the light curve ride CxPass
                    Probe, Capture, MirrorZ,          // MirrorZ: CX-51 the planar mirror's plane

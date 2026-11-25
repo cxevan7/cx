@@ -133,6 +133,7 @@ public sealed unsafe partial class AlloyRenderer
         _oBone[i] = -1; _oDpAt[i] = -1;
         UnstampRecord(i);
         SetCastOk(i, false);
+        _rtOk[i] = false;
         // CX-120: the tenancy stamp is minted HERE, for THIS slot, and is unique to this seating -- the one
         // thing every reader of it means by it ("the slot changed hands"). It used to be the generation
         // current at the seat, with DbOrder re-stamping every live slot afterwards; see DbOrder.

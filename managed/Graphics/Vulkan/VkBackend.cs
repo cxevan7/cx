@@ -367,13 +367,22 @@ internal sealed unsafe partial class VkBackend : IDevice
         return false;
     }
 
+    /// <summary>Does the device carry <c>bufferDeviceAddress</c>? Ray tracing reaches its buffers through it.</summary>
+    private bool BufferDeviceAddress(VkPhysicalDevice d)
+    {
+        var f12 = new VkPhysicalDeviceVulkan12Features();
+        var f2 = new VkPhysicalDeviceFeatures2 { pNext = &f12 };
+        _vki.vkGetPhysicalDeviceFeatures2(d, &f2);
+        return f12.bufferDeviceAddress;
+    }
+
     /// <summary>The driver lists device extension <paramref name="name"/> (NUL-terminated) for this device.</summary>
     internal bool Offers(ReadOnlySpan<byte> name) => HasExt(_vki, _phys, name);
 
     /// <summary>The device, or null -- logged -- when the probe refuses or a creation step fails. <paramref name="meshShaders"/>
     /// false opens it as a device without <c>VK_EXT_mesh_shader</c> would be; <paramref name="oneQueue"/> opens no
     /// async or transfer queue, so every submit rides the graphics one; <paramref name="capMib"/> caps the device-local heaps (0 = none).</summary>
-    public static VkBackend? TryCreate(ExtenderLog log, bool meshShaders = true, bool oneQueue = false, long capMib = 0)
+    public static VkBackend? TryCreate(ExtenderLog log, bool meshShaders = true, bool oneQueue = false, long capMib = 0, bool rayTracing = false)
     {
         if (Refusal(log) is string why) { log.Always($"VkBackend: REFUSED -- {why}"); return null; }
         if (Open(log, out VkInstance inst, out VkPhysicalDevice phys, out uint family, out VkPhysicalDeviceFeatures feats) is string late)
@@ -382,7 +391,7 @@ internal sealed unsafe partial class VkBackend : IDevice
             log.Always($"VkBackend: REFUSED in Alloy's context -- {late}");
             return null;
         }
-        try { return new VkBackend(log, inst, phys, family, feats, meshShaders, oneQueue, capMib); }
+        try { return new VkBackend(log, inst, phys, family, feats, meshShaders, oneQueue, capMib, rayTracing); }
         catch (InvalidOperationException e)
         {
             log.Always($"VkBackend: REFUSED -- {e.Message}");
@@ -390,7 +399,7 @@ internal sealed unsafe partial class VkBackend : IDevice
         }
     }
 
-    private VkBackend(ExtenderLog log, VkInstance inst, VkPhysicalDevice phys, uint family, VkPhysicalDeviceFeatures has, bool meshShaders, bool oneQueue, long capMib)
+    private VkBackend(ExtenderLog log, VkInstance inst, VkPhysicalDevice phys, uint family, VkPhysicalDeviceFeatures has, bool meshShaders, bool oneQueue, long capMib, bool rayTracing)
     {
         _log = log;
         _thread = Environment.CurrentManagedThreadId;
@@ -412,8 +421,12 @@ internal sealed unsafe partial class VkBackend : IDevice
         if (asyncFamily >= 0) qci[queues++] = new VkDeviceQueueCreateInfo { queueFamilyIndex = (uint)asyncFamily, queueCount = 1, pQueuePriorities = &prio };
         if (transferFamily >= 0) qci[queues++] = new VkDeviceQueueCreateInfo { queueFamilyIndex = (uint)transferFamily, queueCount = 1, pQueuePriorities = &prio };
         var f11 = new VkPhysicalDeviceVulkan11Features { shaderDrawParameters = true };
+        // alloy.raytrace: asked for, and everything ray queries need offered
+        _rt.Why = rayTracing ? RtProbe(phys, has) : "alloy.raytrace is off";
+        _rt.On = _rt.Why == null;
         var f12 = new VkPhysicalDeviceVulkan12Features
         {
+            bufferDeviceAddress = _rt.On && BufferDeviceAddress(phys),
             pNext = &f11, drawIndirectCount = true, runtimeDescriptorArray = true, descriptorBindingPartiallyBound = true,
             descriptorBindingVariableDescriptorCount = true, shaderSampledImageArrayNonUniformIndexing = true,
             descriptorBindingSampledImageUpdateAfterBind = true, timelineSemaphore = true,
@@ -443,6 +456,7 @@ internal sealed unsafe partial class VkBackend : IDevice
         feats.features.robustBufferAccess = true;
         feats.features.fragmentStoresAndAtomics = has.fragmentStoresAndAtomics;
         feats.features.geometryShader = true;
+        feats.features.shaderInt64 = _rt.On;
         bool layerExt = ViewportIndex(phys) && HasExt(_vki, phys, "VK_EXT_shader_viewport_index_layer\0"u8);
         _memBudget = HasExt(_vki, phys, "VK_EXT_memory_budget\0"u8);
         bool eds3Ext = HasExt(_vki, phys, Eds3Ext), gplExt = HasExt(_vki, phys, GplExt) && HasExt(_vki, phys, PipelineLibraryExt);
@@ -480,13 +494,18 @@ internal sealed unsafe partial class VkBackend : IDevice
                  : _mesh ? null : "VK_EXT_mesh_shader offers no task and mesh stages";
         var meshOn = new VkPhysicalDeviceMeshShaderFeaturesEXT { pNext = f11.pNext, taskShader = true, meshShader = true };
         if (_mesh) { f11.pNext = &meshOn; _meshStages = VkPipelineStageFlags2.TaskShaderEXT | VkPipelineStageFlags2.MeshShaderEXT; }
+        var rqOn = new VkPhysicalDeviceRayQueryFeaturesKHR { pNext = f11.pNext, rayQuery = true };
+        var asOn = new VkPhysicalDeviceAccelerationStructureFeaturesKHR { pNext = &rqOn, accelerationStructure = true };
+        if (_rt.On) f11.pNext = &asOn;
         VkDevice device;
         fixed (byte* sw = SwapchainExt)
         fixed (byte* vl = "VK_EXT_shader_viewport_index_layer\0"u8) fixed (byte* mb = "VK_EXT_memory_budget\0"u8)
         fixed (byte* e3 = Eds3Ext) fixed (byte* gl = GplExt) fixed (byte* plib = PipelineLibraryExt)
         fixed (byte* mx = MeshExt) fixed (byte* mp = PriorityExt)
+        fixed (byte* xas = AsExt) fixed (byte* xrq = RayQueryExt) fixed (byte* xho = HostOpsExt)
         {
-            byte** exts = stackalloc byte*[9] { sw, null, null, null, null, null, null, null, null };
+            byte** exts = stackalloc byte*[12];
+            exts[0] = sw;
             uint n = 1;
             if (layerExt) exts[n++] = vl;
             if (_memBudget) exts[n++] = mb;
@@ -494,6 +513,7 @@ internal sealed unsafe partial class VkBackend : IDevice
             if (_canLibraries) { exts[n++] = gl; exts[n++] = plib; }
             if (_mesh) exts[n++] = mx;
             if (_memPriority) exts[n++] = mp;
+            if (_rt.On) { exts[n++] = xas; exts[n++] = xrq; exts[n++] = xho; }
             var dci = new VkDeviceCreateInfo
             {
                 pNext = &feats, queueCreateInfoCount = queues, pQueueCreateInfos = qci,
@@ -507,7 +527,9 @@ internal sealed unsafe partial class VkBackend : IDevice
         _async = asyncFamily >= 0 ? OpenLane((uint)asyncFamily, "async") : null;
         _transfer = transferFamily >= 0 ? OpenLane((uint)transferFamily, "transfer") : null;
 
-        _vma = CreateAllocator(inst, capMib);
+        _vma = CreateAllocator(inst, capMib, f12.bufferDeviceAddress);
+        if (_rt.On) RtProps(phys);
+        log.Always(_rt.On ? "VkBackend: ray tracing is up (acceleration structures and ray queries)" : $"VkBackend: ray tracing is off -- {_rt.Why}");
         log.Always(_memPriority ? $"VkBackend: {PriorityOnTag} -- the driver keeps what draws every frame in VRAM before the textures"
                                 : $"VkBackend: {PriorityAbsentTag} -- the driver lacks VK_EXT_memory_priority, so it picks what leaves VRAM itself");
         _stagePool = MakeStagePool();
@@ -582,7 +604,7 @@ internal sealed unsafe partial class VkBackend : IDevice
     /// <inheritdoc cref="_memBudget"/>
     public bool MemoryBudget => _memBudget;
 
-    private VmaAllocator CreateAllocator(VkInstance inst, long capMib)
+    private VmaAllocator CreateAllocator(VkInstance inst, long capMib, bool addresses)
     {
         // VMA resolves the rest of Vulkan itself from the two loaders it is handed
         delegate* unmanaged<void> gipa = vkGetInstanceProcAddr(inst, "vkGetInstanceProcAddr"u8);
@@ -596,7 +618,8 @@ internal sealed unsafe partial class VkBackend : IDevice
         {
             physicalDevice = _phys, device = _device, instance = inst, vulkanApiVersion = ApiFloor, pVulkanFunctions = &fns,
             flags = (_memBudget ? VmaAllocatorCreateFlags.EXTMemoryBudget : VmaAllocatorCreateFlags.None)
-                  | (_memPriority ? VmaAllocatorCreateFlags.EXTMemoryPriority : VmaAllocatorCreateFlags.None),
+                  | (_memPriority ? VmaAllocatorCreateFlags.EXTMemoryPriority : VmaAllocatorCreateFlags.None)
+                  | (addresses ? VmaAllocatorCreateFlags.BufferDeviceAddress : VmaAllocatorCreateFlags.None),
         };
         ulong* limits = stackalloc ulong[(int)VK_MAX_MEMORY_HEAPS];
         if (HeapLimits(capMib, limits)) ci.pHeapSizeLimit = limits;
@@ -642,6 +665,7 @@ internal sealed unsafe partial class VkBackend : IDevice
         if ((d.Use & BufferUse.Index) != 0) use |= VkBufferUsageFlags.IndexBuffer;
         if ((d.Use & BufferUse.Indirect) != 0) use |= VkBufferUsageFlags.IndirectBuffer;
         if ((d.Use & BufferUse.CopySrc) != 0) use |= VkBufferUsageFlags.TransferSrc;
+        use |= RtUsage(d.Use);
         if (d.Memory == MemoryKind.Readback)
         {
             // ReadBack copies out of it into its own scratch, so a readback buffer is a copy source whatever it declared

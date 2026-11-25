@@ -357,7 +357,16 @@ void main()
     float sunNdl = CxWrap(dot(N, uAreaDir), uWrapN);
     // the wrapped value, not the raw one -- a fragment the wrap has just lit must still be able to
     // be in shadow, or the band the wrap opens up glows through every caster
-    float sunVis = (slots & CX_SLOT_NOSHADOW) != 0 ? 1.0 : CxSunShadow(vWorld, N, sunNdl, sunRaw);
+    float rtSun = 1.0;
+#ifdef CX_RT
+    // shadow.raytrace: rays answer for the static world; the movers' map stays for what the scene does not hold
+    if (uRtShadow.x > 0.0 && (uRtA.x != 0u || uRtA.y != 0u) && sunNdl > 0.0 && (slots & CX_SLOT_NOSHADOW) == 0)
+    {
+        rtSun = CxRtSunVis(vWorld, Ng, uAreaDir, fract(CxShadowNoise(vWorld) + uLocalPcss.y));
+        cxSunStaticW = 0.0;
+    }
+#endif
+    float sunVis = (slots & CX_SLOT_NOSHADOW) != 0 ? 1.0 : CxSunShadow(vWorld, N, sunNdl, sunRaw) * rtSun;
     if ((slots & CX_SLOT_NOSHADOW) != 0) cxRecvShadow = 0.0;
     // cut-out cards are skipped: leaf over leaf in the prepass would speckle every canopy
     if (uContact.x > 0.0 && uCapture == 0 && uAlphaCut < 0.0 && sunNdl > 0.0 && sunVis > 0.0 && (slots & CX_SLOT_NOSHADOW) == 0)
