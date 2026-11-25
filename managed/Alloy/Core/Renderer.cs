@@ -13,6 +13,7 @@ internal static class Renderer
 {
     internal static readonly KnobGroup G;
     internal static readonly Knob<bool> Enabled, Smooth;
+    internal static readonly Knob<float> TileBlend;
     /// <summary>Is Alloy drawing this session? Then it draws the CX scene database (ADR 0028) and no engine
     /// <c>Scene</c>/<c>Gob</c>/<c>Part</c> exists. Off is vanilla, whole: a refused Vulkan probe or a seam that stood
     /// down. The seam initializes before every other service, so they all read its verdict.</summary>
@@ -158,6 +159,10 @@ internal static class Renderer
                           help: "Tiles drawn past the area edge so the horizon is not empty; the stock game draws 5.");
         Oit = G.Dropdown("oit", "Transparency", new[] { 0, 1 }, 1, new[] { "sorted", "weighted" }, tier: Tier.ChatOnly,
                          help: "How overlapping transparent surfaces are combined.", changed: AlloyRenderer.InvalidateRecords);
+        TileBlend = G.Slider("tileblend", "Blend ground across tile edges", 0f, 1f, 0.05f, 1f, tier: Tier.Advanced,
+                             help: "Where two tiles' ground textures meet on the area's 10 m grid, they blend into each other over a "
+                                 + "ragged band instead of meeting in a ruled line. Ground only: walls, props and figures keep their edges. "
+                                 + "Needs Screen-space reflections on.");
         Smooth = G.Toggle("smooth", "Smooth rounded models", true, Tier.Advanced, Effect.Restart,
                           help: "Low-polygon rounded shapes on tiles and placeables -- columns, barrels, rocks, arches -- are curved "
                               + "out between their corners as they load, so their outlines stop looking faceted. Hard edges stay sharp. "
