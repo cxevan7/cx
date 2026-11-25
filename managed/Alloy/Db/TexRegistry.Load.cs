@@ -411,6 +411,7 @@ internal static unsafe partial class TexRegistry
             j.Cov = TexCoverage.Opaque;
             j.CovWhy = "PLT -> Opaque where its gob is env-mapped (palette alpha = reflectivity); a cutout on the "
                      + "palette alpha where it is not";
+            UpscalePlt(j, raw);
             return;
         }
         if (j.Loc.ResType == TgaResType)
@@ -429,6 +430,7 @@ internal static unsafe partial class TexRegistry
                 j.CovWhy = TexCoverageOf.Why($"TGA, {r.Px} channel(s)", j.Cov);
             }
             j.MeanOk = TexScan.MeanOfRaster(px, r.W, r.H, r.Px, out j.Mean);
+            if (UpscaleTga(j, sheet, r.Px)) return;
             if (j.Cuts && !j.EnvMap && !j.DataTexture && r.Px == 4 && j.GridX * j.GridY <= 1 && MipChain.RasterNative(sheet, r.W, r.H, out long chainBytes) is var built && built != null)
             {
                 NativeMemory.Free(px);
