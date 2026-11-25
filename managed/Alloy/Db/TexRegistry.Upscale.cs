@@ -53,7 +53,7 @@ internal static unsafe partial class TexRegistry
     {
         int cap = Renderer.Upscale.V;
         return cap > 0 && j.Cuts && !j.DataTexture && !j.Tail && !j.Upgrade && j.GridX * j.GridY <= 1 && !j.Cycle
-               && f is DdsReader.Fmt.Bc1 or DdsReader.Fmt.Bc3
+               && f is DdsReader.Fmt.Bc1 or DdsReader.Fmt.Bc2 or DdsReader.Fmt.Bc3 or DdsReader.Fmt.Bc7
                && Math.Max(j.W, j.H) <= cap && Math.Min(j.W, j.H) >= UpscaleMinSide;
     }
 
@@ -87,8 +87,13 @@ internal static unsafe partial class TexRegistry
         DdsReader.FreePrepared(j.Data);
         j.Data = chain.Pointer; j.Native = true;
         j.W = w2; j.H = h2; j.Levels = levels; j.Bytes = chain.Length;
+        if (UpscaleOut(f) != f) BcChain(j, UpscaleOut(f));
         return true;
     }
+
+    /// <summary>The format a rebuild of a <paramref name="f"/> texture is encoded in: BC1 stays BC1, and BC2, BC3 and BC7,
+    /// which carry alpha, become BC3 -- the encoder's alpha format.</summary>
+    private static DdsReader.Fmt UpscaleOut(DdsReader.Fmt f) => f == DdsReader.Fmt.Bc1 ? DdsReader.Fmt.Bc1 : DdsReader.Fmt.Bc3;
 
     /// <summary><paramref name="key"/> with a source kind folded in.</summary>
     private static ulong UpscaleKindOf(ulong key, ulong kind) => (key ^ kind) * 1099511628211UL;
@@ -175,8 +180,8 @@ internal static unsafe partial class TexRegistry
     private static void UpgradeWork(Job j)
     {
         if (j.Kind == TexKind.Plt) { PltWork(j); return; }
-        DdsReader.Fmt f = j.UpFmt;
-        bool bc3 = f == DdsReader.Fmt.Bc3;
+        DdsReader.Fmt f = j.UpFmt, outFmt = UpscaleOut(f);
+        bool bc3 = outFmt == DdsReader.Fmt.Bc3;
         bool hard = j.Cov == TexCoverage.Cutout;
         bool tga = j.Loc.ResType == TgaResType;
         byte[] src = tga ? j.UpSource! : DecodeRgba(j.UpSource, j.W, j.H, f);
@@ -204,7 +209,7 @@ internal static unsafe partial class TexRegistry
             at += n;
             if (l + 1 < levels) level = Halve(level, lw, lh, out lw, out lh);
         }
-        if (!j.EnvMap) MipChain.Dds(chainOut, w2, h2, levels, f);
+        if (!j.EnvMap) MipChain.Dds(chainOut, w2, h2, levels, outFmt);
         string path = UpscalePath(j.Resref, UpscaleKeyAi(j.UpKey, ai != null, factor));
         System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
         CacheFile.Write(path, file);
@@ -215,7 +220,7 @@ internal static unsafe partial class TexRegistry
         string how = ai != null ? $"AI {AiModelNames[AiModelWanted]}, {factor}x, protect {UpscaleProtect:F2}" : "classic 2x";
         j.UpNote = $"upscaled {(tga ? "TGA " : "")}{j.W}x{j.H} -> {w2}x{h2} ({how})";
         j.W = w2; j.H = h2; j.Levels = levels; j.Bytes = chain.Length;
-        if (tga) BcChain(j, f);
+        if (tga || outFmt != f) BcChain(j, outFmt);
     }
 
     /// <summary>Level 0 of a BC1 or BC3 image as RGBA8. The decoder answers BC1 as RGB, three bytes a texel (the engine
@@ -415,6 +420,8 @@ internal static unsafe partial class TexRegistry
             check.Expect(back[At(40, 20, 64, 3)] == 255 && (!bc3 || back[At(4, 20, 64, 3)] == 0),
                          $"{f}: alpha stays where it was through the round trip");
         }
+        check.Expect(UpscaleOut(DdsReader.Fmt.Bc1) == DdsReader.Fmt.Bc1 && UpscaleOut(DdsReader.Fmt.Bc2) == DdsReader.Fmt.Bc3
+                     && UpscaleOut(DdsReader.Fmt.Bc7) == DdsReader.Fmt.Bc3, "DXT1 rebuilds as DXT1; DXT3 and BC7, which carry alpha, as DXT5");
         PltUpscaleSelfCheck(check);
         log.Info(check.Ok ? "TexRegistry.UpscaleSelfCheck: passed" : "TexRegistry.UpscaleSelfCheck: FAILED");
         return check.Ok;

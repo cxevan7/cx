@@ -162,7 +162,7 @@ internal static class Renderer
         Upscale = G.Dropdown("upscale", "Upscale small textures", new[] { 0, 256, 512, 1024 }, 512,
                              new[] { "off", "up to 256 px", "up to 512 px", "up to 1024 px" }, tier: Tier.Advanced,
                              changed: CX.Alloy.Db.TexRegistry.UpscaleChanged,
-                             help: "Model textures this size or smaller -- DDS and TGA, and armour and clothing (PLT), never heads -- are rebuilt at twice the resolution as they load, edges kept crisp "
+                             help: "Model textures this size or smaller -- DDS (DXT1, DXT3, DXT5, BC7) and TGA, and armour and clothing (PLT), never heads -- are rebuilt at twice the resolution as they load, edges kept crisp "
                                  + "and lightly sharpened, so stock textures hold up close. Each one takes four times the video memory, "
                                  + "and loading takes a little longer. Changes apply at once, so it doubles as a before-and-after switch.");
         UpscaleAi = G.Toggle("upscaleai", "AI texture upscaling", true, Tier.Advanced, changed: CX.Alloy.Db.TexRegistry.UpscaleChanged,
