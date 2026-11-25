@@ -84,6 +84,8 @@ public sealed unsafe partial class AlloyRenderer : IExtenderService
     /// <summary>The record takes no shadow (<c>CX_SLOT_NOSHADOW</c>): an untextured blended sheet such as a door's
     /// <c>sam</c> transition sheen. Binds nothing.</summary>
     internal const int NoShadowBit = 1 << 8;
+    /// <summary>A part at or under this mesh alpha casts no shadow: vanilla skips drawing it outright.</summary>
+    internal const float CastAlphaFloor = 0.004f;
     /// <summary>The four PALETTE slots: <c>.mtr</c> <see cref="PalTexture0"/>..<c>texture10</c>, the engine's
     /// own last four material stages (it pins <c>texUnit7</c>..<c>texUnit10</c> to units 7..10 at link). Alloy
     /// has no unit left for them -- the lit stage spends 0..30 -- so they reach their readers, the content pairs,
