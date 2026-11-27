@@ -99,6 +99,19 @@ if [ ! -f build/cxfsr.lib ] || [ native/ffx/cxfsr.cpp -nt build/cxfsr.lib ] || [
   llvm-lib -out:build/cxfsr.lib build/ffx/objw/*.obj
 fi
 
+# The AI texture upscale: ONNX Runtime + DirectML and the Real-ESRGAN model, only where they have been placed in build/deps/AI
+# (include/, bin/*.dll, cx_upscale.onnx, licences). The loader is linked in; the runtime ships beside version.dll.
+AI=build/deps/AI
+if [ -f "$AI/cx_upscale.onnx" ]; then
+  if [ ! -f build/cxai.lib ] || [ native/ai/cxai.cpp -nt build/cxai.lib ]; then
+    echo ">> building the AI upscale loader (cxai.lib, clang-cl cross)..."
+    clang-cl -c -std:c++17 -O2 -MT -GS- -EHs-c- -GR- -DNDEBUG $WINC -I"$AI/include" native/ai/cxai.cpp -Fo:build/cxai_win.obj
+    llvm-lib -out:build/cxai.lib build/cxai_win.obj
+  fi
+else
+  rm -f build/cxai.lib
+fi
+
 # CX-57: the pinned audio runtime -- OpenAL Soft's own Win64 release build and Steam Audio's phonon.dll, shipped
 # beside version.dll (see build.sh for why OpenAL is a separate file) -- and the mixer, linked in.
 python3 tools/deps.py openal-src build/deps
@@ -139,6 +152,7 @@ rm -rf "$OUT" && mkdir -p "$OUT"
 cp build/win/cx_managed.dll "$OUT/version.dll"
 cp build/deps/win/soft_oal.dll "$OUT/cx_openal.dll"
 cp build/deps/sa/phonon.dll "$OUT/phonon.dll"
+if [ -f build/cxai.lib ]; then cp "$AI"/bin/*.dll "$AI"/*.onnx "$OUT/"; fi
 # CX-320: the Vulkan toolchain's native halves, dropped in build/win/ by the publish above (NuGet
 # runtimes/win-x64/native). They ship beside version.dll, the way the audio runtime does. Named, not
 # globbed: a publish that stops copying one has to fail here rather than ship an install missing it.
@@ -149,6 +163,7 @@ done
 BUILDS=$(awk -F'\t' '$1 == "name" { printf "%s%s", sep, $2; sep = ", " }' managed/Framework/Builds/*.tsv)
 sed "s/@VERSION@/$CX_VERSION/g; s/@BUILDS@/$BUILDS/g" packaging/README-win.txt > "$OUT/README.txt"
 packaging/licenses.sh "$OUT/LICENSES.txt"
+if [ -f build/cxai.lib ]; then for l in "$AI"/licenses/*; do printf '\n\n==== %s ====\n\n' "$(basename "$l")" >> "$OUT/LICENSES.txt"; cat "$l" >> "$OUT/LICENSES.txt"; done; fi
 # Contents, not the folder: the README says "unpack here" and that has to be true.
 python3 -c "import shutil; shutil.make_archive('$OUT', 'zip', '$OUT')"
 echo ">> artifacts ($OUT/, $OUT.zip):"; ls -1 "$OUT"
