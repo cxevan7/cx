@@ -502,6 +502,7 @@ public sealed unsafe partial class AlloyRenderer
                 LooseBlock.Set(L.Rim, Lighting.Rim.V);
                 LooseBlock.Set(L.TileSeam, Renderer.TileBlend.V);
                 LooseBlock.Set(L.WaterSurf, Water.Surfaces.V, Water.Ripples.V, Water.Shine.V, _capturing ? 0f : Weather.IceShown);
+                if (_vkc.Dev is { } rtDev) VkRtTerms(rtDev, L.Rt);
                 LooseBlock.Set(L.MirrorZ, _mirrorZ);
                 LooseBlock.Set(L.LightRecOn, s.LightRec ? 1 : 0);
                 LooseBlock.Set(L.Oit, s.Oit ? 1 : 0);

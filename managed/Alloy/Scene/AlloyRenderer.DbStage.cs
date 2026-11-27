@@ -361,6 +361,9 @@ public sealed unsafe partial class AlloyRenderer
         bool castOk = mayCast && !_oFading[i] && tint.W > 0f && castAlpha > 0f && !SceneDb.LodHidden(SceneDb.PartLodTree[part], SceneDb.ObjLodShown[o]) && (_oCls[i] <= (byte)AlloyClass.Cutout
                                       || (_oCls[i] == (byte)AlloyClass.Blended && _oBone[i] < 0));
         if (castOk != _castOk[i]) System.Threading.Interlocked.Increment(ref castOk ? ref _dbCastOn : ref _dbCastOff);
+        // alloy.raytrace: what shows in the world, whatever its object's shadow flag says -- a reflection is not a shadow
+        _rtOk[i] = !_oFading[i] && tint.W > 0f && castAlpha > 0f
+                   && !SceneDb.LodHidden(SceneDb.PartLodTree[part], SceneDb.ObjLodShown[o]);
         SetCastOk(i, castOk, ref c);
 
         // CX-120: one TILE record and one OBJECT record, in full, once each. Tiles render near-black while

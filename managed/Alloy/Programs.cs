@@ -111,6 +111,7 @@ internal static unsafe class Programs
         L.Rim = LooseBlock.Loc("uRim");
         L.TileSeam = LooseBlock.Loc("uTileSeam");
         L.WaterSurf = LooseBlock.Loc("uWaterSurf");
+        L.Rt = RtLocs.Of(LooseBlock.Loc);
         L.LightOcc = LooseBlock.Loc("uLightOcc");
         L.Material = LooseBlock.Loc("uMaterial");
         L.AoDirect = LooseBlock.Loc("uAoDirect"); L.AoCutout = LooseBlock.Loc("uAoCutout"); L.AoMapOff = LooseBlock.Loc("uAoMapOff");

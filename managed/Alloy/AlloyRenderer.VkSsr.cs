@@ -16,9 +16,6 @@ namespace CX.Alloy;
 /// </summary>
 public sealed unsafe partial class AlloyRenderer
 {
-    /// <summary>alloy.tileblend's band each side of a grid line at full strength, and NWN's tile size, in metres.</summary>
-    private const float TileBlendBand = 1.2f, TileMetres = 10f;
-
     /// <summary>The pass's programs and targets on one device, replaced whole with the device.</summary>
     private sealed class VkSsrState
     {
@@ -46,6 +43,8 @@ public sealed unsafe partial class AlloyRenderer
         public PipelineId TracePipe, ResPipe, HistPipe;
         public int TProj = -1, TInvProj = -1, TView = -1, TNf = -1, TSsr = -1, TFrame = -1;
         public int RInvProj = -1, RView = -1, RInvView = -1, RCap = -1, RProbeMips = -1, RShift = -1, RPlane = -1, RColShift = -1, RFrame = -1;
+        /// <summary>alloy.raytrace's terms on the resolve (<see cref="VkRtTerms"/>).</summary>
+        public RtLocs? Rt;
         /// <summary>alloy.tileblend's terms on the history pass.</summary>
         public int PSeam = -1, PSeamVp = -1;
         public int PInvProj = -1, PInvView = -1, PPrevVp = -1, PHistOn = -1;
@@ -127,6 +126,7 @@ public sealed unsafe partial class AlloyRenderer
         LooseBlock.Set(s.RColShift, s.ColShift);
         LooseBlock.Set(s.RPlane, [s.PlOn ? s.PlZ : 0f, s.PlOn ? 1f : 0f, 0f, 0f]);
         LooseBlock.Set(s.RFrame, frame);
+        VkRtTerms(vk, s.Rt);
         LooseBlock.EndCapture();
         int rsAt = VkArena(rs.Block);
         Array.Clear(hs.Block);
@@ -152,6 +152,8 @@ public sealed unsafe partial class AlloyRenderer
         ImageId prev = s.HistAt == 0 ? s.Hist0 : s.Hist1, next = s.HistAt == 0 ? s.Hist1 : s.Hist0;
         ReadOnlySpan<ImageId> read = [s.Pyr, s.Col, s.RecN, s.RecW, c.Depth, s.PlOn ? s.PlMip : s.Col, prev];
         cl.ReadImages(read);
+        // alloy.raytrace: a ray's hit reads the lightmap's irradiance pages
+        if (s.Rt != null && LightmapBake.VkPage("uLmA", out _) is { IsNull: false } lmPage) cl.ReadImages([lmPage]);
         VkSsrDraw(cl, tr, s.TracePipe, trAt, [new(s.Out, 0, 0, LoadOp.DontCare, StoreOp.Store, default)], s.Ow, s.Oh);
         cl.ReadImages([s.Out]);
         VkSsrDraw(cl, rs, s.ResPipe, rsAt, [new(s.Resolved, 0, 0, LoadOp.DontCare, StoreOp.Store, default)], s.W, s.H);
@@ -212,6 +214,8 @@ public sealed unsafe partial class AlloyRenderer
                 "uHist" => new ImageBinding(o.Binding, s.HistAt == 0 ? s.Hist0 : s.Hist1, c.Linear),
                 "uProbe" => VkProbeImage(o) ?? new ImageBinding(o.Binding, c.TexCube, c.Linear),
                 "uPlanar" when s.PlOn => new ImageBinding(o.Binding, s.PlMip, s.Trilinear),
+                "uRtLmA" => LightmapBake.VkPage("uLmA", out SamplerId lms) is { IsNull: false } lmA
+                            ? new ImageBinding(o.Binding, lmA, lms) : new ImageBinding(o.Binding, c.Tex2DArray, c.Linear),
                 _ => new ImageBinding(o.Binding, c.Tex2D, c.Linear),
             };
         }
@@ -237,10 +241,14 @@ public sealed unsafe partial class AlloyRenderer
             s.TProj = p.Loc("uProj"); s.TInvProj = p.Loc("uInvProj"); s.TView = p.Loc("uView");
             s.TNf = p.Loc("uNf"); s.TSsr = p.Loc("uSsr"); s.TFrame = p.Loc("uFrame");
         }, log);
-        s.Res = PostChainVk.Program(vk, PostChain.FullscreenVs, ShaderSource.Get("cx_ssrres_f.glsl"), "ssr resolve", p =>
+        // alloy.raytrace: the resolve's ray-traced variant only where the device runs ray queries (its module needs them)
+        string res = ShaderSource.Get("cx_ssrres_f.glsl");
+        if (vk.RayTracing && Renderer.RayTrace.Boot) res = RtVariant(res);
+        s.Res = PostChainVk.Program(vk, PostChain.FullscreenVs, res, "ssr resolve", p =>
         {
             s.RInvProj = p.Loc("uInvProj"); s.RView = p.Loc("uView"); s.RInvView = p.Loc("uInvView"); s.RCap = p.Loc("uCap"); s.RProbeMips = p.Loc("uProbeMips"); s.RShift = p.Loc("uShift");
             s.RPlane = p.Loc("uPlane"); s.RColShift = p.Loc("uColShift"); s.RFrame = p.Loc("uFrame");
+            s.Rt = RtLocs.Of(p.Loc);
         }, log);
         s.Hist = PostChainVk.Program(vk, PostChain.FullscreenVs, ShaderSource.Get("cx_ssrhist_f.glsl"), "ssr history", p =>
         {

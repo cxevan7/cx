@@ -17,6 +17,10 @@
 // ponytail: no ripple sources. Add them when the engine's wind-source array has a reader (#340).
 
 float CxSqr(float x) { return x * x; }
+#ifdef CX_RT
+#include "cx_rtlib.glsl"
+#endif
+
 // water.clarity/shore/ripples/shine: CX's own terms over the stock port, each 0 = stock.
 const float CX_CLEAR_ALPHA = 0.75;     // the transparency a solid water texture takes at full clarity
 const float CX_SHORE_SOFT = 0.3;       // metres of water over which the edge fades into the bank
@@ -351,7 +355,15 @@ void main()
                           clamp(0.1 - 4.0 * dot(vReflectedNormal, vReflect), 0.0, 1.0));
     // The miss and the reject both land on the SHADED surface, which is vanilla's flat-horizon
     // look. #129's probe fallback is exactly the custom shading this ticket removes.
-    ColorReflection = mix(ShadedColor, ColorReflection, fReflectionMod);
+    // alloy.raytrace: where the march left the screen, a real ray through the scene before stock's shaded fallback
+    vec3 ReflectionMiss = ShadedColor;
+#ifdef CX_RT
+    vec3 rtHit;
+    if ((uRtA.x != 0u || uRtA.y != 0u) && fReflectionMod < 0.99 && uCapture == 0
+        && CxRtTrace(vWorld + vSurfaceNormalWorld * CX_RT_BIAS, normalize(mat3(transpose(uView)) * vReflect), 0.0, uEyePos, rtHit))
+        ReflectionMiss = rtHit;
+#endif
+    ColorReflection = mix(ReflectionMiss, ColorReflection, fReflectionMod);
 
     // ---- composite ---------------------------------------------------------------------------
     ColorLiquid = mix(ColorLiquid, ColorRefraction, fRefractionTransparency);
