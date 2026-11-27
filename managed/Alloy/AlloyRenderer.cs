@@ -30,9 +30,9 @@ public sealed unsafe partial class AlloyRenderer : IExtenderService
     /// saturated table makes that key a bucket every unseen texture shares, costing the sort its point.</summary>
     internal const int MaxMats = 16384;
     /// <summary>Floats per CxDraw record: std430 <c>mat4 + vec4 rot + vec4 amb + vec4 dif + vec4 emi + vec4
-    /// pbr + vec4 spc + vec4 feat + mat4 prev + vec4 ext0..ext2</c> = 288 bytes, whose alignment (16) already
-    /// divides the size, so the array stride is 288 with no padding.</summary>
-    internal const int DrawFloats = 72;
+    /// pbr + vec4 spc + vec4 feat + mat4 prev + vec4 ext0..ext2 + vec4 leaf</c> = 304 bytes, whose alignment (16)
+    /// already divides the size, so the array stride is 304 with no padding.</summary>
+    internal const int DrawFloats = 76;
     /// <summary>ADR 0026: where the three material-extension vec4s (<c>ext0..ext2</c>) start -- after
     /// <c>prev</c>, so no older field moved.</summary>
     internal const int ExtFloat = 60;
@@ -187,7 +187,7 @@ public sealed unsafe partial class AlloyRenderer : IExtenderService
     /// <see cref="OwnedLitFsMain"/> and the water stage. Raise it when a stage adds one, or the new mode is
     /// silently clamped at the parse and the screenshot is of the old view.
     /// <see cref="FrameSnapshot.SelfCheck"/> asserts the water stage's highest view against this.</summary>
-    internal const int LightVizMax = 54;   // 54 = a material's AO map alone; 53 = the CX-273 decal layer folded into each surface (white = all decal); 52 = a forward fragment's light source (green deferred record, yellow baked walk, red unbaked walk); 51 = the hot-light path per fragment (red tested, green ray hit); 40 = the #493 vis-ID target (IdTarget.VizMode); 43/44 = the #674 lightmap term and its texel grid; 47..50 = CX-117's PLT forensics
+    internal const int LightVizMax = 55;   // 55 = the foliage class (green foliage, yellow a thin cut-out card); 54 = a material's AO map alone; 53 = the CX-273 decal layer folded into each surface (white = all decal); 52 = a forward fragment's light source (green deferred record, yellow baked walk, red unbaked walk); 51 = the hot-light path per fragment (red tested, green ray hit); 40 = the #493 vis-ID target (IdTarget.VizMode); 43/44 = the #674 lightmap term and its texel grid; 47..50 = CX-117's PLT forensics
     internal static int _lightViz => Renderer.Viz.V;
 
     /// <summary>Any stage's diagnostic view is asked for: the world's, the transparency resolve's, the halos', the

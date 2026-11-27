@@ -12,6 +12,7 @@ in vec2 vChart;                // #674: chart UV in atlas texels
 flat in int vDraw;             // this fragment's CxDraw record: the material colours live there now
 #include "cx_drawbuf.glsl"
 #include "cx_featdecl.glsl"
+#include "cx_leaf.glsl"
 #include "cx_keyfogdecl.glsl"
 #include "cx_chartbuf.glsl"
 #include "cx_plt.glsl"

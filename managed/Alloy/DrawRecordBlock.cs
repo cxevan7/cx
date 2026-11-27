@@ -38,4 +38,7 @@ internal struct DrawRecordBlock
     public float FeatX, FeatY, FeatZ, FeatW;
     public Matrix4x4 Prev;
     public MaterialExt Ext;
+    /// <summary>The foliage and painted-water lanes cx_leaf.glsl reads: x the canopy centre's x and y, y its z and the
+    /// record's code, each as two halves; z and w unused.</summary>
+    public Vector4 Leaf;
 }

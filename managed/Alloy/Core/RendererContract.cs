@@ -188,9 +188,9 @@ internal static class RendererContract
         bool pass = PassCheck(log);
         bool slotSafe = SlotSafeSelfCheck(log);
         bool eng = AlloyRenderer.EngineBlockSelfCheck(log);
-        // the record's field list, counted by field size: the 288-byte stride staged above
+        // the record's field list, counted by field size: the 304-byte stride staged above
         bool ok = slots && ssbo && ubo && pass && slotSafe && eng && DrawBufDecl.Contains($"binding = {BindDraw})")
-                  && RecordSafe(DrawBufDecl) && DrawBufDecl.Contains("vec4 feat; mat4 prev; vec4 ext0; vec4 ext1; vec4 ext2; }")
+                  && RecordSafe(DrawBufDecl) && DrawBufDecl.Contains("vec4 feat; mat4 prev; vec4 ext0; vec4 ext1; vec4 ext2; vec4 leaf; }")
                   && DrawBufDecl.Contains("vec4 emi") && DrawBufDecl.Contains("vec4 spc")
                   && DrawBufDecl.Contains("vec4 feat")
                   // the feature ids are a contract between the ShaderFeature enum (staged into d.feat.x) and the
@@ -588,7 +588,7 @@ internal static class RendererContract
                   && SlotSafe(GrassField.GrassFsHead, "uTex")
                   && !SlotSafe(PostChain.ResolveFs, "uNotASampler")
                   && !DepthSafe(OwnedVs.Replace("invariant gl_Position;", ""))
-                  && !DepthSafe(OwnedVs.Replace(ClipExpr, "gl_Position = uVP * (d.model * vec4(aPos, 1.0));"))
+                  && !DepthSafe(OwnedVs.Replace(ClipExpr, "gl_Position = uVP * (d.model * vec4(aPos + CxLeafSway(d, aPos), 1.0));"))
                   // ...and the ownable list is the DRAW list: nothing else renders the world since #264, so
                   // a bucket missing here is a class that goes dark rather than one that stays vanilla.
                   && AlloyCensus.OwnableBucket(0) && AlloyCensus.OwnableBucket(1)

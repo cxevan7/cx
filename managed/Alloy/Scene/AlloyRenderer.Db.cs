@@ -628,17 +628,45 @@ public sealed unsafe partial class AlloyRenderer
         f.FeatY = _oBone[i] >= 0 ? _oBone[i] : _oFeat[i * 4 + 1];
 
         if (fresh) DbWriteStable(ref r, i);
+        bool leafMoved = DbWriteLeaf(ref r, i);
         // #302's mover level, stamped HERE as well as in StageDbPart: this fold write consumes the move, so the
         // stage that runs after it in the same frame sees the model already in place and would never stamp it.
         var (casterMoved, moverMoved) = MoveLevels(in r.Model, in f.Model);
         bool moved = WritePerFrame(ref r, in f, roll: true, fresh: fresh);
-        if (fresh || moved) MarkRecordDirty(i);
+        if (fresh || moved || leafMoved) MarkRecordDirty(i);
         if (casterMoved || fresh) _recMovedAt[i] = _frameSeq;
         if (moverMoved || fresh) _mvMovedAt[i] = _frameSeq;
         _gate[i].RecGen = _recEpoch; _gate[i].RecEnroll = _gate[i].EnrollGen; _gate[i].RecFrame = _frameSeq;
         DbWriteSphere(i, in f);
         return true;
     }
+
+    /// <summary>The foliage lanes (<see cref="DrawRecipe.Leaf"/>) in leaf.xy, laid out as cx_leaf.glsl reads them: leaf.x the
+    /// canopy centre's x and y, leaf.y its z and a code, each pair as two halves. The code is the canopy radius for foliage
+    /// that sways, <see cref="LeafStill"/> minus it for foliage that does not, -1 a thin card, -2/-3 why refused, 0 none.
+    /// A creature's or effect's part (emi.w -1, <see cref="DbWriteStable"/>) takes none. True when a lane moved.</summary>
+    private static bool DbWriteLeaf(ref DrawRecordBlock r, int i)
+    {
+        int recipe = _oDbRecipe[i];
+        byte leaf = Lighting.Leaves.V && _oLit[i] && r.EmiW >= 0f ? DrawRecipe.Leaf(recipe) : DrawRecipe.LeafNone;
+        Vector3 c = leaf == DrawRecipe.LeafFoliage ? DrawRecipe.Centre(recipe) : default;
+        float code = leaf == DrawRecipe.LeafFoliage
+                     ? (Lighting.LeafWind.V ? MathF.Max(DrawRecipe.Radius(recipe), 0.1f) : LeafStill - DrawRecipe.Radius(recipe))
+                   : leaf == DrawRecipe.LeafThin ? -1f
+                   : Lighting.Leaves.V && DrawRecipe.LeafWhy(recipe) != DrawRecipe.LeafWhyNone ? -1f - DrawRecipe.LeafWhy(recipe) : 0f;
+        uint xy = Halves(c.X, c.Y), zw = Halves(c.Z, code);
+        bool moved = BitConverter.SingleToUInt32Bits(r.Leaf.X) != xy || BitConverter.SingleToUInt32Bits(r.Leaf.Y) != zw;
+        r.Leaf.X = BitConverter.UInt32BitsToSingle(xy); r.Leaf.Y = BitConverter.UInt32BitsToSingle(zw);
+        return moved;
+    }
+
+    /// <summary>cx_leaf.glsl's CX_LEAF_STILL: a foliage code at or below it does not sway.</summary>
+    internal const float LeafStill = -10f;
+
+    /// <summary>Two floats as GLSL's packHalf2x16 lays them out: <paramref name="lo"/> in the low half. Compared as bits by
+    /// the caller, because two halves can spell a NaN float, which never equals itself.</summary>
+    private static uint Halves(float lo, float hi)
+        => BitConverter.HalfToUInt16Bits((Half)lo) | (uint)BitConverter.HalfToUInt16Bits((Half)hi) << 16;
 
     /// <summary>The DB-mode stable half: the same record fields <c>WriteStable</c> writes, sourced from the
     /// recipe and the object's flags instead of <c>_oTri</c>'s vtable and <c>_oGob</c>'s attachment chain.</summary>
