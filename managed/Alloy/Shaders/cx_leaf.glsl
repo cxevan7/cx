@@ -1,5 +1,5 @@
 // The foliage lanes (AlloyRenderer.DbWriteLeaf, DrawRecipe.LeafOf) and the leaf sway every stage that draws a record's
-// vertices applies through ClipExpr. occ.z holds the canopy centre's model-space x and y as two halves; occ.w its z and a
+// vertices applies through ClipExpr. leaf.x holds the canopy centre's model-space x and y as two halves; leaf.y its z and a
 // code as two halves. The code: 0 none, -1 a thin cut-out card, -2 / -3 refused (a content stage / another reason),
 // > 0 foliage that sways, its canopy radius; <= CX_LEAF_STILL foliage that does not, radius CX_LEAF_STILL - code.
 // Needs cx_drawbuf (CxDraw) and cx_featdecl (CxClock, uAreaWind) first.
@@ -10,13 +10,13 @@
 #define CX_SWAY_WIND 2.0         // ...times this much more in a full area wind
 
 /// The record's foliage code (see the head of this file).
-float CxLeafCode(vec4 occ) { return unpackHalf2x16(floatBitsToUint(occ.w)).y; }
+float CxLeafCode(vec4 leaf) { return unpackHalf2x16(floatBitsToUint(leaf.y)).y; }
 
 /// A foliage record's canopy, model space: false for anything else.
-bool CxLeafCanopy(vec4 occ, out vec3 centre, out float radius, out bool sways)
+bool CxLeafCanopy(vec4 leaf, out vec3 centre, out float radius, out bool sways)
 {
-    vec2 w = unpackHalf2x16(floatBitsToUint(occ.w));
-    centre = vec3(unpackHalf2x16(floatBitsToUint(occ.z)), w.x);
+    vec2 w = unpackHalf2x16(floatBitsToUint(leaf.y));
+    centre = vec3(unpackHalf2x16(floatBitsToUint(leaf.x)), w.x);
     sways = w.y > 0.0;
     radius = sways ? w.y : CX_LEAF_STILL - w.y;
     return w.y > 0.0 || w.y <= CX_LEAF_STILL;
@@ -29,7 +29,7 @@ vec3 CxLeafSway(CxDraw d, vec3 p)
     vec3 c;
     float r;
     bool sways;
-    if (!CxLeafCanopy(d.occ, c, r, sways) || !sways) return vec3(0.0);
+    if (!CxLeafCanopy(d.leaf, c, r, sways) || !sways) return vec3(0.0);
     float reach = clamp(length(p - c) / max(r, 0.1), 0.0, 1.0);
     float t = CxClock() * 0.001;
     float ph = dot(p, vec3(0.73, 0.91, 0.37));

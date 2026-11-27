@@ -1,7 +1,7 @@
     // water.surfaces: painted water (DrawRecipe.WaterLook, code CX_WATER_LOOK) takes a water layer over its paint -- moving
     // ripples on the normal, the standing-water film the reflection passes already draw, and the rain's rings on it.
     // After the weather splice, so it rides that film rather than racing it.
-    if (uWaterSurf.x > 0.0 && abs(CxLeafCode(d.occ) - CX_WATER_LOOK) < 0.5)
+    if (uWaterSurf.x > 0.0 && abs(CxLeafCode(d.leaf) - CX_WATER_LOOK) < 0.5)
     {
         vec3 wlNg = normalize(vNrm);
         if (wlNg.z > 0.7)

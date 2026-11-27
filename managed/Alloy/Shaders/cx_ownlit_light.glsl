@@ -59,11 +59,11 @@
 #define CX_LEAF_FOLIAGE 0.35     // ...and through a leaf
 #define CX_LEAF_FORWARD 4.0      // how tightly the glow gathers around looking into the sun
 #define CX_LEAF_CORE 0.45        // ambient left at the canopy's centre
-    float leafCode = CxLeafCode(d.occ);
+    float leafCode = CxLeafCode(d.leaf);
     vec3 leafC;
     float leafR;
     bool leafSways;
-    bool foliage = CxLeafCanopy(d.occ, leafC, leafR, leafSways);
+    bool foliage = CxLeafCanopy(d.leaf, leafC, leafR, leafSways);
     if (foliage)
     {
         vec3 canopy = (d.model * vec4(leafC, 1.0)).xyz;

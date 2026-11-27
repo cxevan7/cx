@@ -642,8 +642,8 @@ public sealed unsafe partial class AlloyRenderer
         return true;
     }
 
-    /// <summary>The foliage lanes (<see cref="DrawRecipe.Leaf"/>) in occ.zw, laid out as cx_leaf.glsl reads them: occ.z the
-    /// canopy centre's x and y, occ.w its z and a code, each pair as two halves. The code is the canopy radius for foliage
+    /// <summary>The foliage lanes (<see cref="DrawRecipe.Leaf"/>) in leaf.xy, laid out as cx_leaf.glsl reads them: leaf.x the
+    /// canopy centre's x and y, leaf.y its z and a code, each pair as two halves. The code is the canopy radius for foliage
     /// that sways, <see cref="LeafStill"/> minus it for foliage that does not, -1 a thin card, -2/-3 why refused, 0 none.
     /// A creature's or effect's part (emi.w -1, <see cref="DbWriteStable"/>) takes none. True when a lane moved.</summary>
     private static bool DbWriteLeaf(ref DrawRecordBlock r, int i)
@@ -658,8 +658,8 @@ public sealed unsafe partial class AlloyRenderer
                    : _oLit[i] && r.EmiW >= 0f && DrawRecipe.WaterLook(recipe) ? WaterLookCode
                    : Lighting.Leaves.V && DrawRecipe.LeafWhy(recipe) != DrawRecipe.LeafWhyNone ? -1f - DrawRecipe.LeafWhy(recipe) : 0f;
         uint xy = Halves(c.X, c.Y), zw = Halves(c.Z, code);
-        bool moved = BitConverter.SingleToUInt32Bits(r.Occ.Z) != xy || BitConverter.SingleToUInt32Bits(r.Occ.W) != zw;
-        r.Occ.Z = BitConverter.UInt32BitsToSingle(xy); r.Occ.W = BitConverter.UInt32BitsToSingle(zw);
+        bool moved = BitConverter.SingleToUInt32Bits(r.Leaf.X) != xy || BitConverter.SingleToUInt32Bits(r.Leaf.Y) != zw;
+        r.Leaf.X = BitConverter.UInt32BitsToSingle(xy); r.Leaf.Y = BitConverter.UInt32BitsToSingle(zw);
         return moved;
     }
 
