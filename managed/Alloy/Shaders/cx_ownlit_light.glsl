@@ -51,6 +51,9 @@
     vec3 sunSpec;
     vec3 sun = CxSunLight(N, sunVis, sunFade, sunSpec);
     vec3 sunSss = uAreaDiffuse * (sunVis * max(dot(N, uAreaDir) + uSss.x, 0.0) * uSss.y);
+    // light.rim: a creature's silhouette catches the area's light at grazing angles, lifting it off a busy background
+    if (uRim > 0.0 && d.emi.w < 0.0 && uCapture == 0)
+        sunSss += (uAreaAmbient + uAreaDiffuse * sunVis) * (uRim * pow(1.0 - max(dot(N, V), 0.0), 4.0));
     vec3 pointSpec;
     // #308 follow-up: 1 on a creature fragment (skinmesh, or the dangly marker in feat.w) -- the
     // local receiver's carrier-band gate, so a creature takes no dyn-pool self-shadow up close.

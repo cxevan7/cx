@@ -44,6 +44,12 @@ uniform int uSsaoOn;           // >0 when this BATCH is in the depth SsaoPass re
 uniform int uSsaoHalf;         // post.halfres: 1 = uSsao is half the frame's extent, read bilaterally
 uniform sampler2D uSceneDepth; // the prepass depth SsaoPass read, to check the pixel is OURS (viz 37)
 uniform float uAoDirect;       // /ao direct: how much of the screen-space occlusion the DIRECT terms take (ADR 0061)
+uniform float uSynthDetail;    // light.detail: the derived bump's strength on a map-less surface, 0 = off
+#define CX_DETAIL_SLOPE 4.0     // height slope per unit of luminance step at full strength
+#define CX_DETAIL_FADE 1.5      // texels per pixel at which the bump has faded out
+uniform float uRim;            // light.rim: a creature's grazing-angle rim light, 0 = off
+uniform vec2 uContact;         // shadow.contact: (ray length in metres, 0 = off; occluder thickness in metres)
+uniform mat4 uVP;              // the vertex stage's own view-projection (one loose block): the contact march projects with it
 uniform int uShaderQuality;    // the engine's SHADER_QUALITY_MODE
 uniform float uAoMapOff;       // /ao map 0: 1 takes the material AO map out of the occlusion factor
 uniform float uAoCutout;       // /ao cutout: how much of it a CUTOUT receiver takes (leaf cards over leaf cards)

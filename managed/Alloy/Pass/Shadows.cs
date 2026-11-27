@@ -12,7 +12,7 @@ internal static class Shadows
     internal static readonly Knob<bool> Enabled, SunDyn, Casters, Gather, Receiver, Rebake, Split, RefreshAll, DynSrc,
                                         DynEvents, FlipCollect, Trace, Detail;
     internal static readonly Knob<float> Dist, Soft, Floor, DiscPx, Near, CsmBias, MaskHoles, MaskGraded, FocusDist, DynMin, CubeDist,
-                                         SunAngle;
+                                         SunAngle, Contact;
     internal static readonly Knob<int> Cascades, Size, Cubes, CubeSize, DynSize, DynCount, Cap, Fade, FadeSlots,
                                        Mask, MaskDither, StaticCap, DynHold, DynFull, SunFull, SunLatch, DynRanks,
                                        Stage, Taps, DeferredRes, PerPixel, Search;
@@ -31,6 +31,9 @@ internal static class Shadows
                         help: "How far from you the sun casts shadows. Cost does not depend on area size.",
                         changed: CasterPass.ShadowInvalidate)
                 .Ladder(Quality.Shadows, 60f, 90f, 120f, 200f);
+        Contact = G.Slider("contact", "Contact shadows", 0f, 1f, 0.05f, 0f, "m",
+                           help: "Small sharp sun shadows where things touch the ground or each other -- feet, props, creases -- "
+                               + "that the main shadow map is too coarse to show. The value is how far they reach. 0 is off.");
         Size = G.Dropdown("size", "Sun shadow resolution", new[] { 512, 1024, 2048, 4096 }, 2048, tier: Tier.Advanced,
                           effect: Effect.Restart, help: "Per-cascade map size. Larger is sharper and slower.")
                 .Ladder(Quality.Shadows, 512, 1024, 2048, 4096);

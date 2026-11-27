@@ -106,6 +106,9 @@ internal static unsafe class Programs
         L.LmPages = LooseBlock.Loc("uLmPages"); L.LmMovers = LooseBlock.Loc("uLmMovers");
         L.Ssao = LooseBlock.Loc("uSsao"); L.SsaoOn = LooseBlock.Loc("uSsaoOn");
         L.SsaoHalf = LooseBlock.Loc("uSsaoHalf");
+        L.Contact = LooseBlock.Loc("uContact");
+        L.SynthDetail = LooseBlock.Loc("uSynthDetail");
+        L.Rim = LooseBlock.Loc("uRim");
         L.LightOcc = LooseBlock.Loc("uLightOcc");
         L.Material = LooseBlock.Loc("uMaterial");
         L.AoDirect = LooseBlock.Loc("uAoDirect"); L.AoCutout = LooseBlock.Loc("uAoCutout"); L.AoMapOff = LooseBlock.Loc("uAoMapOff");
