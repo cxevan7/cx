@@ -16,6 +16,9 @@ namespace CX.Alloy;
 /// </summary>
 public sealed unsafe partial class AlloyRenderer
 {
+    /// <summary>alloy.tileblend's band each side of a grid line at full strength, and NWN's tile size, in metres.</summary>
+    private const float TileBlendBand = 1.2f, TileMetres = 10f;
+
     /// <summary>The pass's programs and targets on one device, replaced whole with the device.</summary>
     private sealed class VkSsrState
     {
@@ -43,6 +46,8 @@ public sealed unsafe partial class AlloyRenderer
         public PipelineId TracePipe, ResPipe, HistPipe;
         public int TProj = -1, TInvProj = -1, TView = -1, TNf = -1, TSsr = -1, TFrame = -1;
         public int RInvProj = -1, RView = -1, RInvView = -1, RCap = -1, RProbeMips = -1, RShift = -1, RPlane = -1, RColShift = -1, RFrame = -1;
+        /// <summary>alloy.tileblend's terms on the history pass.</summary>
+        public int PSeam = -1, PSeamVp = -1;
         public int PInvProj = -1, PInvView = -1, PPrevVp = -1, PHistOn = -1;
     }
 
@@ -130,6 +135,8 @@ public sealed unsafe partial class AlloyRenderer
         LooseBlock.Set(s.PInvView, invView);
         LooseBlock.Set(s.PPrevVp, s.PrevVp);
         LooseBlock.Set(s.PHistOn, s.HistValid ? 1 : 0);
+        LooseBlock.Set(s.PSeam, _capturing ? 0f : Renderer.TileBlend.V, TileBlendBand, TileMetres, 0f);
+        LooseBlock.Set(s.PSeamVp, vp);
         LooseBlock.EndCapture();
         int hsAt = VkArena(hs.Block);
         if (trAt < 0 || rsAt < 0 || hsAt < 0) return;
@@ -238,6 +245,7 @@ public sealed unsafe partial class AlloyRenderer
         s.Hist = PostChainVk.Program(vk, PostChain.FullscreenVs, ShaderSource.Get("cx_ssrhist_f.glsl"), "ssr history", p =>
         {
             s.PInvProj = p.Loc("uInvProj"); s.PInvView = p.Loc("uInvView"); s.PPrevVp = p.Loc("uPrevVp"); s.PHistOn = p.Loc("uHistOn");
+            s.PSeam = p.Loc("uSeam"); s.PSeamVp = p.Loc("uSeamVp");
         }, log);
         s.Point = vk.CreateSampler(new SamplerDesc(Filter.Nearest, Filter.Nearest, MipMode.Nearest, Wrap.Clamp));
         s.Trilinear = vk.CreateSampler(new SamplerDesc(Filter.Linear, Filter.Linear, MipMode.Linear, Wrap.Clamp));

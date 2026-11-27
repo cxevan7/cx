@@ -139,6 +139,18 @@ void main()
     float aoSlope = fwidth(gl_FragCoord.z);
     float aaKernel = CxSpecAAKernel(normalize(vNrm));
     vec3 dp1 = dFdx(vWorld), dp2 = dFdy(vWorld);
+    // alloy.tileblend: each tile smoothed its normals over its own triangles only, so two tiles disagree at their shared
+    // edge and the light folds along the grid. Near the line a tile's ground leans toward its true face normal, which
+    // the two sides share wherever the ground itself runs on.
+    if (uTileSeam > 0.0 && uDraw[vDraw].emi.w > 0.5)
+    {
+        vec2 off = vWorld.xy / CX_TILE_M;
+        off = abs(off - floor(off + 0.5)) * CX_TILE_M;
+        vec3 nf = normalize(cross(dp1, dp2));
+        if (dot(nf, N) < 0.0) nf = -nf;
+        float wSeam = uTileSeam * CX_SEAM_LEAN * (1.0 - smoothstep(CX_SEAM_INNER, CX_SEAM_OUTER, min(off.x, off.y)));
+        if (wSeam > 0.0 && nf.z > CX_SEAM_GROUND) N = normalize(mix(N, nf, wSeam));
+    }
     vec2 du1 = dFdx(vUV), du2 = dFdy(vUV);
     CxDraw d = uDraw[vDraw];
     int feat = int(d.feat.x);
