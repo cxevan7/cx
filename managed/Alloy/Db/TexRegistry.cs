@@ -496,9 +496,9 @@ internal static unsafe partial class TexRegistry
     /// <summary>A material's texture changed (the game's <c>ReplaceTexture</c>, a material slot write, or a
     /// cycle controller stepping to the next cell): acquire the new slot, release the old one. One call, so a
     /// swap cannot leave a reference behind. Game thread.</summary>
-    internal static TexId Swap(TexId old, string resref, TexKind kind = TexKind.Auto, int cell = 0)
+    internal static TexId Swap(TexId old, string resref, TexKind kind = TexKind.Auto, int cell = 0, bool cuts = false)
     {
-        TexId now = Acquire(resref, kind, cell);
+        TexId now = Acquire(resref, kind, cell, cuts);
         Release(old);
         return now;
     }

@@ -40,7 +40,8 @@ internal static class ObjectTex
             if (m != Match.Takes) { if (m == Match.MtrKept) NoteMtrKept(p, slot, From); return 0; }
             int at = p * PartSlots.Slots + slot;
             var old = new TexId((uint)SceneDb.PartTexId[at]);
-            SceneDb.PartTexId[at] = (int)TexRegistry.Swap(old, To, Kind).Value;
+            // a swapped diffuse is the part's model texture, as a recipe's slot 0 is: cut out and upscaled the same way
+            SceneDb.PartTexId[at] = (int)TexRegistry.Swap(old, To, Kind, cuts: slot == 0).Value;
             if (!Rows.IsEmpty) PltColors.SetPartRows(p, Rows);
             return 1;
         }
