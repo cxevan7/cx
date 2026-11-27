@@ -12,7 +12,7 @@ namespace CX.Alloy;
 internal static class Renderer
 {
     internal static readonly KnobGroup G;
-    internal static readonly Knob<bool> Enabled;
+    internal static readonly Knob<bool> Enabled, Smooth;
     /// <summary>Is Alloy drawing this session? Then it draws the CX scene database (ADR 0028) and no engine
     /// <c>Scene</c>/<c>Gob</c>/<c>Part</c> exists. Off is vanilla, whole: a refused Vulkan probe or a seam that stood
     /// down. The seam initializes before every other service, so they all read its verdict.</summary>
@@ -157,6 +157,10 @@ internal static class Renderer
                           help: "Tiles drawn past the area edge so the horizon is not empty; the stock game draws 5.");
         Oit = G.Dropdown("oit", "Transparency", new[] { 0, 1 }, 1, new[] { "sorted", "weighted" }, tier: Tier.ChatOnly,
                          help: "How overlapping transparent surfaces are combined.", changed: AlloyRenderer.InvalidateRecords);
+        Smooth = G.Toggle("smooth", "Smooth rounded models", false, Tier.Advanced, Effect.Restart,
+                          help: "Low-polygon rounded shapes on tiles and placeables -- columns, barrels, rocks, arches -- are curved "
+                              + "out between their corners as they load, so their outlines stop looking faceted. Hard edges stay sharp. "
+                              + "Armour and clothing parts round off too; heads and creatures are left as they are.");
         TexCache = G.Dropdown("texcache", "Texture memory budget", new[] { -1, 512, 1024, 2048, 4096, 8192 }, -1, tier: Tier.ChatOnly,
                               effect: Effect.Restart, format: AutoInt, parse: ParseAutoInt);
         Native = G.Toggle("native", "Native shader stages", true, Tier.ChatOnly, changed: () => Programs.State.SpliceStale = true,
