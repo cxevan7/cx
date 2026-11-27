@@ -48,7 +48,10 @@ uniform float uAoDirect;       // /ao direct: how much of the screen-space occlu
 uniform float uSynthDetail;    // light.detail: the derived bump's strength on a map-less surface, 0 = off
 #define CX_DETAIL_SLOPE 4.0     // height slope per unit of luminance step at full strength
 #define CX_DETAIL_FADE 1.5      // texels per pixel at which the bump has faded out
+uniform vec4 uWaterSurf;       // water.surfaces, water.ripples, water.shine: painted water's own layer, 0 = off
 uniform float uRim;            // light.rim: a creature's grazing-angle rim light, 0 = off
+/// The standing-water film's head-on reflectance where water.shine raises it over the dielectric's (cx_waterlook); 0 = stock.
+float cxFilmF0 = 0.0;
 uniform vec2 uContact;         // shadow.contact: (ray length in metres, 0 = off; occluder thickness in metres)
 uniform mat4 uVP;              // the vertex stage's own view-projection (one loose block): the contact march projects with it
 uniform int uShaderQuality;    // the engine's SHADER_QUALITY_MODE

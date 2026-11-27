@@ -653,6 +653,8 @@ public sealed unsafe partial class AlloyRenderer
         float code = leaf == DrawRecipe.LeafFoliage
                      ? (Lighting.LeafWind.V ? MathF.Max(DrawRecipe.Radius(recipe), 0.1f) : LeafStill - DrawRecipe.Radius(recipe))
                    : leaf == DrawRecipe.LeafThin ? -1f
+                   // water.surfaces: painted water takes its own code (cx_leaf.glsl CX_WATER_LOOK), outside every leaf range
+                   : _oLit[i] && r.EmiW >= 0f && DrawRecipe.WaterLook(recipe) ? WaterLookCode
                    : Lighting.Leaves.V && DrawRecipe.LeafWhy(recipe) != DrawRecipe.LeafWhyNone ? -1f - DrawRecipe.LeafWhy(recipe) : 0f;
         uint xy = Halves(c.X, c.Y), zw = Halves(c.Z, code);
         bool moved = BitConverter.SingleToUInt32Bits(r.Leaf.X) != xy || BitConverter.SingleToUInt32Bits(r.Leaf.Y) != zw;
@@ -662,6 +664,8 @@ public sealed unsafe partial class AlloyRenderer
 
     /// <summary>cx_leaf.glsl's CX_LEAF_STILL: a foliage code at or below it does not sway.</summary>
     internal const float LeafStill = -10f;
+    /// <summary>cx_leaf.glsl's CX_WATER_LOOK: painted water (<see cref="DrawRecipe.WaterLook"/>), between the leaf codes.</summary>
+    internal const float WaterLookCode = -5f;
 
     /// <summary>Two floats as GLSL's packHalf2x16 lays them out: <paramref name="lo"/> in the low half. Compared as bits by
     /// the caller, because two halves can spell a NaN float, which never equals itself.</summary>
