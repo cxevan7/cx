@@ -806,6 +806,8 @@ empty unless the device refused the effect, then "Depth of field is off for this
 | fog.sky | Fog takes the sky colour | S | 0–1 step 0.05 · 0.75 | U | L | Colour | How far the fog colour moves from the area's flat colour toward the sky. 0 is the stock look. |
 | fog.sun | Sun glow in fog | S | 0–2 step 0.05 · 0.35 | A | L | Colour | Fog brightens toward the sun. |
 | fog.sunexp | Sun glow tightness | S | 1–64 · 8 | A | L | Colour | Big = tight glow, small = half-sky wash. |
+| fog.haze | Distance haze | S | 0–1000 m step 25 · 0 | A | L | Distance haze | Outdoors, far scenery fades softly into the sky's colour, glowing toward the sun, so distance reads as distance. The value is how far until it is mostly hazed; 0 is off. Interiors are never hazed. |
+| fog.hazesun | Haze sun glow | S | 0–1 step 0.05 · 0.1 | A | L | Distance haze | How much brighter the haze is looking toward the sun. |
 | fog.skyband | Horizon band | S | 0–1 step 0.05 · 0.15 | A | L | Colour | How far above the horizon the sky dome is fogged. |
 | fog.height | Height falloff | S | 0–1 step 0.005 · 0 | A | L | Density | Fog thins with height above the floor; 0 = off. |
 | fog.floor | Layer floor | S | 0–50 m step 1 · 0 | A | L | Density | Offset above your feet where thinning starts. |

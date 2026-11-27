@@ -142,6 +142,8 @@ internal static unsafe class Programs
         FogSkyColor = LooseBlock.Loc("uFogSkyColor"),
         FogSun = LooseBlock.Loc("uFogSun"),
         FogSunColor = LooseBlock.Loc("uFogSunColor"),
+        FogHaze = LooseBlock.Loc("uFogHaze"),
+        FogHazeColor = LooseBlock.Loc("uFogHazeColor"),
         FogOrigin = LooseBlock.Loc("uFogOrigin"),
         VFog = LooseBlock.Loc("uVFog"),
         VFogVp = LooseBlock.Loc("uVFogVp"),

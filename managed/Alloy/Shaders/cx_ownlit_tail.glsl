@@ -158,6 +158,7 @@
         // (the spec's Known deviations, and the approximation CxReflOut above already takes). The REVEAL
         // factor, not the plain one: on an unexplored tile that ramp is the one the pixel actually took.
         float thru = kh * (1.0 - CxFogRevealFactor(vWorld, vDepth, d.ext2.w));
+        if (d.ext2.w <= 0.0) thru *= CxHazeT(vWorld);   // the deferred lamps take the same haze the forward ones do
         // P: pointSpec and the film statics both enter specLight times dirOcc, and specLight reaches the
         // pixel through the ghost divide and nothing else.
         g.specT = dirOcc * thru / ghost;
