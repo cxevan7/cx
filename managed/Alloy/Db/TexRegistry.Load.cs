@@ -80,6 +80,12 @@ internal static unsafe partial class TexRegistry
         /// <summary>An upscale upgrade: <see cref="UpSource"/> is the original chain it rebuilds, and its upload replaces the
         /// slot's finished image once.</summary>
         public bool Upgrade;
+        /// <summary>A derived normal map's slot (<see cref="NormalCell"/>): decoded by <see cref="DecodeNormal"/>.</summary>
+        public bool Normal;
+        /// <summary>...and its derived height map (<see cref="HeightCell"/>), built alongside.</summary>
+        public bool Height;
+        /// <summary>...or its derived roughness map (<see cref="RoughCell"/>).</summary>
+        public bool Rough;
         public byte[]? UpSource;
         public ulong UpKey;
         /// <summary>What the upgrade did, for cx.log.</summary>
@@ -175,6 +181,9 @@ internal static unsafe partial class TexRegistry
         Job j = Rent();
         j.Slot = i; j.Gen = _gen[i]; j.Revision = _imageRevision[i]; j.Resref = resref; j.Kind = _kind[i];
         j.Data = null; j.Chained = false; j.Cuts = _cuts[i]; j.Why = null; j.W = j.H = j.Levels = 0; j.Bytes = 0; j.Channels = 0; j.Fast = fast; j.Tail = false; j.Native = false; j.Upgrade = false; j.UpSource = null;
+        j.Normal = _cell[i] is NormalCell or HeightCell or RoughCell;
+        j.Height = _cell[i] == HeightCell;
+        j.Rough = _cell[i] == RoughCell;
         // The .txi is its own resource, and the only one the engine reads: CAurTextureBasic::Init @0x588940
         // and Material::Init @0x5c5b90 both take it from AurResGet(name, ".txi"), which reaches the resman's
         // CResHelper<CResTXI,2022> and nothing else. So it is looked up here, on the thread that may read the
@@ -329,7 +338,7 @@ internal static unsafe partial class TexRegistry
                     lock (_gate) (j.Fast ? _outFast : _out).Enqueue(j);
                 }
             }) { IsBackground = true, Name = w == 0 ? "cx-tex" : $"cx-tex-{w}" }.Start();
-        // the upscale rebuilds on a thread of their own: one waits on the GPU for seconds, and a load
+        // the upscale and normal-map rebuilds on a thread of their own: one waits on the GPU for seconds, and a load
         // worker held by one left the UI's own textures queued behind it
         new Thread(static () =>
         {
@@ -341,7 +350,7 @@ internal static unsafe partial class TexRegistry
                     while (_inUp.Count == 0) Monitor.Wait(_gate);
                     j = _inUp.Dequeue();
                 }
-                try { UpgradeWork(j); }
+                try { if (j.Normal) NormalWork(j); else UpgradeWork(j); }
                 catch (Exception e) { j.Why = $"{e.GetType().Name}: {e.Message}"; }
                 lock (_gate) _outUp.Enqueue(j);
             }
@@ -375,6 +384,7 @@ internal static unsafe partial class TexRegistry
     /// <summary>Decode the bytes the read produced, whichever container they came from.</summary>
     private static void Decode(Job j, ReadOnlySpan<byte> raw)
     {
+        if (j.Normal) { DecodeNormal(j, raw); return; }
         if (j.Fast && j.Kind != TexKind.Plt && j.Loc.ResType != TgaResType && j.GridX * j.GridY <= 1 && TryTail(j, raw)) return;
         if (j.Kind == TexKind.Plt)
         {

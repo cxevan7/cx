@@ -9,12 +9,12 @@ namespace CX.Alloy;
 internal static class Lighting
 {
     internal static readonly KnobGroup G;
-    internal static readonly Knob<float> Gain, Ambient, Sun, Sky, Overbright, Sss, Wrap, WrapNdl, Hot, HotSize, Radius, Falloff, Detail, Rim,
+    internal static readonly Knob<float> Gain, Ambient, Sun, Sky, Overbright, Sss, Wrap, WrapNdl, Hot, HotSize, Radius, Falloff, Detail, Rim, Relief, AiBump,
                                          ProbeGain, BinReach, AmbientDir,
                                          Daylight, DayLow, DayHigh, Flicker, FlickerSpeed, SsrRough, Relevance, Floor, FullModel;
     internal static readonly Knob<int> Fadeout, ProbeSize, BinCap, SsrDetail, SsrPlanarRes;
     internal static readonly Knob<bool> Probe, ReachFade, HiddenLights, Brdf, Grazing, SpecAa, Ssr, SsrPlanar,
-                                        Deferred, DeferredTiles, DeferredWave, LightRec, Leaves, LeafWind;
+                                        Deferred, DeferredTiles, DeferredWave, LightRec, Leaves, LeafWind, AiNormals, AiRelief, AiMaterial;
 
     static Lighting()
     {
@@ -134,6 +134,21 @@ internal static class Lighting
         Detail = G.Slider("detail", "Surface detail on plain textures", 0f, 1f, 0.05f, 0f, tier: Tier.Advanced,
                           help: "Surfaces with only a colour texture -- most stock content -- get a gentle bump read from that texture's "
                               + "light and dark, up close. Painted shadows can read as dents, so it is off by default; 0.3 to 0.5 is a good start.");
+        AiNormals = G.Toggle("ainormals", "AI surface relief on plain textures", false, Tier.Advanced,
+                             effect: Effect.Restart,
+                             help: "Models with no normal map get one made by an AI model from their colour texture, so stone, wood "
+                                 + "and cloth catch the light. Built in the background and kept on disk. Windows with a DirectX 12 GPU.");
+        AiRelief = G.Toggle("airelief", "AI relief on plain textures", false, Tier.Advanced, effect: Effect.Restart,
+                            help: "Where AI surface relief gives a texture a normal map it also gets a height map, so cobbles, bricks and "
+                                + "flagstones stand out in depth and hide one another at low angles. Built with the normal map.");
+        AiMaterial = G.Toggle("aimaterial", "AI material response on plain textures", false, Tier.Advanced, effect: Effect.Restart,
+                              help: "Where AI surface relief gives a texture a normal map it also gets a roughness map, so worn, creviced "
+                                  + "stone and plaster stay matte while smooth flagstones, tiles and fittings catch a soft gloss.");
+        Relief = G.Slider("relief", "Relief depth", 0f, 2f, 0.05f, 0.6f, tier: Tier.Advanced,
+                          help: "How deep relief from height maps looks, where the material does not say. 1 is the stock depth; 0 is flat.");
+        AiBump = G.Slider("aibump", "AI surface bump strength", 0f, 1.5f, 0.05f, 1f, tier: Tier.Advanced,
+                          help: "How strongly AI-made normal and height maps shape the surface. Lower it if soft ground such as grass or "
+                              + "leaf litter looks lumpy; 1 is the map as made, 0 is flat.");
         LeafWind = G.Toggle("leafwind", "Leaves move in the wind", true, Tier.Advanced,
                             help: "Foliage found by Light through leaves sways gently, more at the edge of each canopy and more in a "
                                 + "windy area. Trees built to sway keep their own motion as well.",

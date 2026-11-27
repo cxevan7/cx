@@ -62,6 +62,18 @@ internal static partial class DrawRecipe
          : s - 1 == FlowSlot && !ShaderFeatures.ReadsExtraSlots(feat) ? 0
          : AlloyRenderer.SlotBit(s - 1);
 
+    /// <summary>The recipe slot that holds the normal map (<c>CX_SLOT_NORMAL</c>).</summary>
+    private const int NormalRecipeSlot = 1, RoughRecipeSlot = 3, HeightRecipeSlot = 4;
+
+    /// <summary>Does recipe <paramref name="r"/> take a derived normal map: a lit mesh with a plain or PLT diffuse, no content
+    /// pair, not additive, no dangly or morphing motion, and not a head (a face would crater).</summary>
+    private static bool DerivesNormal(int r, NodeDef nd, int feat, bool additive)
+        => Lighting.AiNormals.Boot && !additive && feat == 0 && !string.IsNullOrEmpty(TexName(r, 0))
+           && nd.Kind is not (NodeKind.Dangly or NodeKind.AnimMesh) && !_declWater[r] && !IsHead(_model[r]?.Name);
+
+    /// <summary>A character's head model (<c>p??#_head###</c>): faces keep their own look, whatever armour around them takes.</summary>
+    internal static bool IsHead(string? model) => model != null && model.Contains("_head", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>The resref recipe slot <paramref name="s"/> binds: the material's <c>textureN</c> where it
     /// declares one, else the MODEL's own word for that slot -- which past the diffuse only counts on a mesh
     /// that has a tangent frame (<see cref="ModelMaps"/>). The material's spec, roughness, height and
@@ -921,6 +933,17 @@ internal static partial class DrawRecipe
             string name = SlotName(s, mtr, mesh);
             _tex[r * TexSlots + s] = name;
             TexId id = string.IsNullOrEmpty(name) ? default : TexRegistry.Acquire(name, cuts: s == 0 && !additive);
+            // light.ainormals: a map-less slot 1 takes the normal map the registry derives from the diffuse
+            bool derived = s == NormalRecipeSlot && id.IsNull && DerivesNormal(r, nd, feat, additive);
+            if (derived) { id = TexRegistry.Acquire(TexName(r, 0), cell: TexRegistry.NormalCell); mask |= MaskBitOf(s, feat) | AlloyRenderer.AiMapBit; }
+            // light.relief: its height map beside it, which the lit stage's parallax march reads
+            // light.aimaterial: its roughness map, which the synthesis takes as declared content
+            if (s == RoughRecipeSlot && id.IsNull && Lighting.AiMaterial.Boot && !Tex(r, NormalRecipeSlot).IsNull
+                && string.IsNullOrEmpty(TexName(r, NormalRecipeSlot)) && SlotName(SpecRecipeSlot, mtr, mesh).Length == 0)
+            { id = TexRegistry.Acquire(TexName(r, 0), cell: TexRegistry.RoughCell); mask |= MaskBitOf(s, feat); }
+            if (s == HeightRecipeSlot && id.IsNull && Lighting.AiRelief.Boot && !Tex(r, NormalRecipeSlot).IsNull
+                && string.IsNullOrEmpty(TexName(r, NormalRecipeSlot)))
+            { id = TexRegistry.Acquire(TexName(r, 0), cell: TexRegistry.HeightCell); mask |= MaskBitOf(s, feat); }
             _texId[r * TexSlots + s] = id.Value;
             bool wait = !id.IsNull && !TexRegistry.Resident(id);
             _texWait[r * TexSlots + s] = wait ? (byte)1 : (byte)0;
