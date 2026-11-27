@@ -31,6 +31,7 @@ internal static unsafe partial class PostChainVk
         public PostChain.GradeTerms Grade;
         public float Dither;
         public int Viz, OverlayOn, GlowOn;
+        public float Contrast, Saturation;
     }
 
     /// <summary><c>cx_resolve_f</c>'s own push members, each beside the field that fills it.</summary>
@@ -50,7 +51,9 @@ internal static unsafe partial class PostChainVk
             VkPush.Of("float", "uDither", ref p, ref p.Dither),
             VkPush.Of("int", "uViz", ref p, ref p.Viz),
             VkPush.Of("int", "uOverlayOn", ref p, ref p.OverlayOn),
-            VkPush.Of("int", "uGlowOn", ref p, ref p.GlowOn));
+            VkPush.Of("int", "uGlowOn", ref p, ref p.GlowOn),
+            VkPush.Of("float", "uContrast", ref p, ref p.Contrast),
+            VkPush.Of("float", "uSaturation", ref p, ref p.Saturation));
     }
 
     /// <summary>The bloom stages' loose terms.</summary>
@@ -184,6 +187,8 @@ internal static unsafe partial class PostChainVk
             Strength = bloom ? Post.Bloom.V : 0f,
             Grade = PostChain.GradeTerms.Now,
             Dither = last ? PostChain.DitherLsb : 0f,
+            Contrast = Post.Contrast.V,
+            Saturation = Post.Saturation.V,
         };
         bool motion = Post.Viz.V == PostChain.VizMotion;
         if (motion && vel.IsNull && !s.VizSaid)

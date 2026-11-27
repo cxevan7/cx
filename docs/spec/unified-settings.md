@@ -756,6 +756,8 @@ empty unless the device refused the effect, then "Depth of field is off for this
 | post.exposure | Exposure | S | 0.25–4 step 0.05 · 1 | U | L | Exposure | Overall brightness before tone mapping. 1 is neutral. |
 | post.bloom | Bloom | S | 0–0.5 step 0.01 · 0.06 | U | L | Bloom | Glow around bright lights. 0 is off. |
 | post.tonemap | Tone mapping | D | shoulder / aces / neutral · aces | U | L | Tone | How bright values above white are compressed. |
+| post.contrast | Contrast | S | 0.5–1.5 step 0.05 · 1.00 | U | L | Tone | Spreads the picture's tones apart around mid-grey after tone mapping. 1 is neutral. |
+| post.saturation | Saturation | S | 0–2 step 0.05 · 1.00 | U | L | Tone | How strong colours are after tone mapping. 1 is neutral, 0 is greyscale. |
 | post.threshold | Bloom threshold | S | 0–4 step 0.05 · 1 | A | L | Bloom | |
 | post.knee | Bloom knee | S | 0–1 step 0.05 · 0.5 | A | L | Bloom | |
 | post.taasharp | TAA sharpness | S | 0–1 step 0.05 · 0.3 | A | L | Anti-aliasing | Undoes the softness the history blend leaves. 0 = the raw resolve. |

@@ -9,7 +9,8 @@ internal static class Post
 {
     internal static readonly KnobGroup G;
     internal static readonly Knob<float> Scale, Exposure, Bloom, Threshold, Knee,
-                                         AcesMix, TmKnee, Dither, TaaBlend, TaaSharp, ToonBands, ToonInk, ToonEdge;
+                                         AcesMix, TmKnee, Dither, TaaBlend, TaaSharp, ToonBands, ToonInk, ToonEdge,
+                                         Contrast, Saturation;
     internal static readonly Knob<string> Aa;
     internal static readonly Knob<bool> Taau, HalfRes, Stack, FbPost, ClearViz, SkyRaw;
     internal static readonly Knob<int> Smaa, Tonemap, Viz;
@@ -56,6 +57,10 @@ internal static class Post
                              help: "How bright values above white are compressed.",
                              format: v => v switch { PostChain.TonemapShoulder => "shoulder", PostChain.TonemapNeutral => "neutral", _ => "aces" })
                   .Ladder(Quality.Preset, Quality.Classic(PostChain.TonemapShoulder, PostChain.TonemapAces));
+        Contrast = G.Slider("contrast", "Contrast", 0.5f, 1.5f, 0.05f, 1f,
+                            help: "Spreads the picture's tones apart around mid-grey after tone mapping. 1 is neutral.");
+        Saturation = G.Slider("saturation", "Saturation", 0f, 2f, 0.05f, 1f,
+                              help: "How strong colours are after tone mapping. 1 is neutral, 0 is greyscale.");
         G.Section("Bloom");
         Threshold = G.Slider("threshold", "Bloom threshold", 0f, 4f, 0.05f, 1f, tier: Tier.Advanced);
         Knee = G.Slider("knee", "Bloom knee", 0f, 1f, 0.05f, 0.5f, tier: Tier.Advanced);
