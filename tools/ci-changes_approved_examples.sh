@@ -27,20 +27,24 @@ row tools/ci-changes.sh true true
 # When tools/ci-changes.sh maps its changed paths
 # Then it starts the Linux build and not the Windows build
 row build.sh true false
+row tools/ssl-by-name.sh true false
 row .github/actions/ffx-cache/action.yml true false
 row run-demo.sh true false
 row tools/live/run-live.sh true false
 row tools/live/revisit.py true false
+row tools/live/step_guard_grade.py true false
+row tools/live/step_guard_fixtures/branch/cx.log true false
+row tools/live/step_guard_grade_regression.sh true false
 row tools/selfcheck/run.sh true false
 row tools/release/sign.sh true false
 row tools/gates/comments.sh true false
 row packaging/cx-launch true false
 row docs/spec/unified-settings.md true false
+row README.md true false
 # Given a pull request that changes a path no build reads
 # When tools/ci-changes.sh maps its changed paths
 # Then it starts neither build
 row docs/adr/0031-coding-standards.md false false
-row README.md false false
 row .github/workflows/ffx-cache.yml false false
 row media/shot.webp false false
 row newfolder/thing.txt false false

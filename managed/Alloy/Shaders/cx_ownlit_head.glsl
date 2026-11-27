@@ -44,7 +44,7 @@ uniform sampler2D uSsao;       // #379: this frame's screen-space visibility (Ss
 uniform int uSsaoOn;           // >0 when this BATCH is in the depth SsaoPass read; <0 names why not (viz 35)
 uniform int uSsaoHalf;         // post.halfres: 1 = uSsao is half the frame's extent, read bilaterally
 uniform sampler2D uSceneDepth; // the prepass depth SsaoPass read, to check the pixel is OURS (viz 37)
-uniform float uAoDirect;       // /ao direct: how much of the screen-space occlusion the DIRECT terms take (ADR 0056)
+uniform float uAoDirect;       // /ao direct: how much of the screen-space occlusion the DIRECT terms take (ADR 0061)
 uniform float uSynthDetail;    // light.detail: the derived bump's strength on a map-less surface, 0 = off
 #define CX_DETAIL_SLOPE 4.0     // height slope per unit of luminance step at full strength
 #define CX_DETAIL_FADE 1.5      // texels per pixel at which the bump has faded out

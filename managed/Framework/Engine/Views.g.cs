@@ -85,6 +85,7 @@ global using unsafe SdlSetWindowSizeFn = delegate* unmanaged<nint, int, int, voi
 global using unsafe SdlGetWindowSizeFn = delegate* unmanaged<nint, int*, int*, void>;
 global using unsafe ActivateTargetModeFn = delegate* unmanaged<nint, void>;
 global using unsafe ActionTargetLMouseDownFn = delegate* unmanaged<nint, void>;
+global using unsafe ActionTargetUpdateFn = delegate* unmanaged<nint, float, int>;
 global using unsafe PerformDefaultActionOnObjectFn = delegate* unmanaged<nint, nint, int>;
 global using unsafe SdlGetKeyboardStateFn = delegate* unmanaged<int*, byte*>;
 global using unsafe MovieShowFrameFn = delegate* unmanaged<nint, int, int, int, int, void>;
@@ -108,6 +109,7 @@ global using unsafe TlkClearOverridesFn = delegate* unmanaged<nint, void>;
 global using unsafe TlkOpenFileAlternateFn = delegate* unmanaged<nint, nint, int>;
 global using unsafe TlkCloseFileAlternateFn = delegate* unmanaged<nint, void>;
 global using unsafe TlkReloadFn = delegate* unmanaged<nint, int>;
+global using unsafe RulesReloadAllFn = delegate* unmanaged<nint, void>;
 global using unsafe GetViewPortFn = delegate* unmanaged<float*, void>;
 global using unsafe GuiObjectHitCheckFn = delegate* unmanaged<nint, int, int, int, int, nint>;
 global using unsafe GuiManHandleGuiTimerFn = delegate* unmanaged<nint, int, void>;
@@ -248,6 +250,9 @@ global using unsafe WalkUpdateLocationFn = delegate* unmanaged<nint, int>;
 global using unsafe TestDirectLineFn = delegate* unmanaged<nint, nint, CX.Engine.VectorArg, CX.Engine.VectorArg, float, float, int, int>;
 global using unsafe SdlSetRelativeMouseModeFn = delegate* unmanaged<int, int>;
 global using unsafe SdlWarpMouseInWindowFn = delegate* unmanaged<nint, int, int, void>;
+global using unsafe SdlShowCursorFn = delegate* unmanaged<int, int>;
+global using unsafe SdlSetWindowGrabFn = delegate* unmanaged<nint, int, void>;
+global using unsafe SdlGetWindowGrabFn = delegate* unmanaged<nint, int>;
 global using unsafe GuiInGameToggleOffFn = delegate* unmanaged<nint, void>;
 global using unsafe GuiInGameUnToggleOffFn = delegate* unmanaged<nint, void>;
 global using unsafe UpdateLookAtFn = delegate* unmanaged<nint, void>;
@@ -381,9 +386,13 @@ global using unsafe InvCloseForLevelupFn = delegate* unmanaged<nint, void>;
 global using unsafe SendPossessFamiliarFn = delegate* unmanaged<nint, void>;
 global using unsafe RulesetIntEntryFn = delegate* unmanaged<nint, ulong, int, int>;
 global using unsafe InvSetCharacterDataFn = delegate* unmanaged<nint, uint, void>;
+global using unsafe InvGetEquipSlotFn = delegate* unmanaged<nint, int, nint>;
+global using unsafe PlayGuiSoundFn = delegate* unmanaged<CX.Engine.ResRefArg, uint, void>;
+global using unsafe InvboxHandleDoubleClickFn = delegate* unmanaged<nint, nint, void>;
 global using unsafe GameCameraHitCheckFn = delegate* unmanaged<int, int, nint, nint, void>;
 global using unsafe GetGameobjectHitFn = delegate* unmanaged<nint, nint*, int>;
 global using unsafe SendBarterStartFn = delegate* unmanaged<nint, uint, uint, void>;
+global using unsafe SendBarterAddItemFn = delegate* unmanaged<nint, uint, byte, byte, void>;
 global using unsafe SendInputUseItemFn = delegate* unmanaged<nint, uint, byte, byte, uint, CX.Engine.VectorArg, void>;
 global using unsafe SendGoldTransferFn = delegate* unmanaged<nint, uint, CX.Engine.VectorArg, int, int, byte, byte, void>;
 global using unsafe QuickButtonSetItemFn = delegate* unmanaged<nint, uint, int, int, void>;
@@ -410,6 +419,8 @@ global using unsafe QuickButtonHandleLeftButtonFn = delegate* unmanaged<nint, vo
 global using unsafe ItemPlayDropSoundFn = delegate* unmanaged<nint, void>;
 global using unsafe GetInventoryPanelFn = delegate* unmanaged<nint, nint>;
 global using unsafe InvboxAddItemFn = delegate* unmanaged<nint, uint, int, int, int, void>;
+global using unsafe MultiInvboxAddItemFn = delegate* unmanaged<nint, uint, int, int, int, void>;
+global using unsafe MultiInvboxCellFreeFn = delegate* unmanaged<nint, int, int, int, int, uint, int>;
 global using unsafe InvSetContainerGuiVisibleFn = delegate* unmanaged<nint, int, int, int, uint, void>;
 global using unsafe InvContainerPageUpFn = delegate* unmanaged<nint, void>;
 global using unsafe InvContainerPageDownFn = delegate* unmanaged<nint, void>;
@@ -420,6 +431,7 @@ global using unsafe SendInvEquipFn = delegate* unmanaged<nint, uint, uint, uint,
 global using unsafe SendInvUnequipFn = delegate* unmanaged<nint, uint, byte, byte, uint, void>;
 global using unsafe SendInvRepositoryMoveFn = delegate* unmanaged<nint, uint, byte, byte, uint, void>;
 global using unsafe SendStoreRequestSellFn = delegate* unmanaged<nint, uint, void>;
+global using unsafe SendStoreRequestBuyFn = delegate* unmanaged<nint, uint, byte, byte, uint, void>;
 global using unsafe StoreMouseoverInventoryItemFn = delegate* unmanaged<nint, uint, void>;
 global using unsafe SendInvDropFn = delegate* unmanaged<nint, uint, float, float, float, void>;
 global using unsafe SendGuiInvStatusFn = delegate* unmanaged<nint, int, uint, void>;
@@ -553,6 +565,8 @@ public readonly unsafe partial struct CActionTarget(IntPtr ptr)
     public bool IsNull => Ptr == IntPtr.Zero;
     /// <inheritdoc cref="SymbolMap.ActionTargetLMouseDown"/>
     public void ActionTargetLMouseDown() => EngineFn.ActionTargetLMouseDown(Ptr);
+    /// <inheritdoc cref="SymbolMap.ActionTargetUpdate"/>
+    public int ActionTargetUpdate(float dt) => EngineFn.ActionTargetUpdate(Ptr, dt);
     /// <inheritdoc cref="SymbolMap.ActivateTargetMode"/>
     public void ActivateTargetMode() => EngineFn.ActivateTargetMode(Ptr);
     /// <inheritdoc cref="EngineLayout.ActionTargetAllowed"/>
@@ -1371,6 +1385,8 @@ public readonly unsafe partial struct CGuiContainer(IntPtr ptr)
     public bool IsNull => Ptr == IntPtr.Zero;
     /// <inheritdoc cref="EngineLayout.ContainerCols"/>
     public ref int Cols => ref *(int*)(Ptr + EngineLayout.ContainerCols);
+    /// <inheritdoc cref="SymbolMap.InvboxHandleDoubleClick"/>
+    public void InvboxHandleDoubleClick(CNWCItem item) => EngineFn.InvboxHandleDoubleClick(Ptr, item.Ptr);
     /// <inheritdoc cref="EngineLayout.ContainerItemIds"/>
     public ref IntPtr ItemIds => ref *(IntPtr*)(Ptr + EngineLayout.ContainerItemIds);
     /// <inheritdoc cref="EngineLayout.ContainerPage"/>
@@ -1530,6 +1546,19 @@ public readonly unsafe partial struct CGuiInGamePopUpBubble(IntPtr ptr)
     public ref int LiveText => ref *(int*)(Ptr + EngineLayout.BubbleLiveText);
 }
 
+/// <summary>Typed view of an engine <c>CGuiInvbox*</c>.</summary>
+public readonly unsafe partial struct CGuiInvbox(IntPtr ptr)
+{
+    /// <summary>The engine object.</summary>
+    public readonly IntPtr Ptr = ptr;
+    /// <summary>No object.</summary>
+    public bool IsNull => Ptr == IntPtr.Zero;
+    /// <inheritdoc cref="EngineLayout.InvboxDraggedId"/>
+    public ref uint DraggedId => ref *(uint*)(Ptr + EngineLayout.InvboxDraggedId);
+    /// <inheritdoc cref="EngineLayout.InvboxItemId"/>
+    public ref uint ItemId => ref *(uint*)(Ptr + EngineLayout.InvboxItemId);
+}
+
 /// <summary>Typed view of an engine <c>CGuiLabel*</c>.</summary>
 public readonly unsafe partial struct CGuiLabel(IntPtr ptr)
 {
@@ -1578,6 +1607,19 @@ public readonly unsafe partial struct CGuiMan(IntPtr ptr)
     public ref int VpHeight => ref *(int*)(Ptr + EngineLayout.GuiManVpH);
     /// <inheritdoc cref="EngineLayout.GuiManVpW"/>
     public ref int VpWidth => ref *(int*)(Ptr + EngineLayout.GuiManVpW);
+}
+
+/// <summary>Typed view of an engine <c>CGuiMultiInvbox*</c>.</summary>
+public readonly unsafe partial struct CGuiMultiInvbox(IntPtr ptr)
+{
+    /// <summary>The engine object.</summary>
+    public readonly IntPtr Ptr = ptr;
+    /// <summary>No object.</summary>
+    public bool IsNull => Ptr == IntPtr.Zero;
+    /// <inheritdoc cref="EngineLayout.MultiInvboxCols"/>
+    public ref int Cols => ref *(int*)(Ptr + EngineLayout.MultiInvboxCols);
+    /// <inheritdoc cref="EngineLayout.MultiInvboxRows"/>
+    public ref int Rows => ref *(int*)(Ptr + EngineLayout.MultiInvboxRows);
 }
 
 /// <summary>Typed view of an engine <c>CGuiObject*</c>.</summary>
@@ -1762,6 +1804,8 @@ public readonly unsafe partial struct CNWBaseItem(IntPtr ptr)
     public readonly IntPtr Ptr = ptr;
     /// <summary>No object.</summary>
     public bool IsNull => Ptr == IntPtr.Zero;
+    /// <inheritdoc cref="EngineLayout.BaseItemContainer"/>
+    public ref int Container => ref *(int*)(Ptr + EngineLayout.BaseItemContainer);
     /// <inheritdoc cref="EngineLayout.BaseItemEquipSlots"/>
     public ref uint EquipSlots => ref *(uint*)(Ptr + EngineLayout.BaseItemEquipSlots);
     /// <inheritdoc cref="EngineLayout.BaseItemInvSlotHeight"/>
@@ -1774,8 +1818,6 @@ public readonly unsafe partial struct CNWBaseItem(IntPtr ptr)
     public ref byte ModelType => ref *(byte*)(Ptr + EngineLayout.BaseItemModelType);
     /// <inheritdoc cref="EngineLayout.BaseItemStacking"/>
     public ref short Stacking => ref *(short*)(Ptr + EngineLayout.BaseItemStacking);
-    /// <inheritdoc cref="EngineLayout.BaseItemUsable"/>
-    public ref int Usable => ref *(int*)(Ptr + EngineLayout.BaseItemUsable);
 }
 
 /// <summary>Typed view of an engine <c>CNWCAmbientSound*</c>.</summary>
@@ -2038,8 +2080,6 @@ public readonly unsafe partial struct CNWCCreatureStats(IntPtr ptr)
     public readonly IntPtr Ptr = ptr;
     /// <summary>No object.</summary>
     public bool IsNull => Ptr == IntPtr.Zero;
-    /// <inheritdoc cref="EngineLayout.StatsCurHp"/>
-    public ref short CurHp => ref *(short*)(Ptr + EngineLayout.StatsCurHp);
     /// <inheritdoc cref="EngineLayout.StatsDamage"/>
     public ref byte Damage => ref *(byte*)(Ptr + EngineLayout.StatsDamage);
     /// <inheritdoc cref="EngineLayout.StatsFirstName"/>
@@ -2050,14 +2090,10 @@ public readonly unsafe partial struct CNWCCreatureStats(IntPtr ptr)
     public ref IntPtr LastName => ref *(IntPtr*)(Ptr + EngineLayout.StatsLastName);
     /// <inheritdoc cref="EngineLayout.StatsLastNameLen"/>
     public ref uint LastNameLen => ref *(uint*)(Ptr + EngineLayout.StatsLastNameLen);
-    /// <inheritdoc cref="EngineLayout.StatsMaxHp"/>
-    public ref short MaxHp => ref *(short*)(Ptr + EngineLayout.StatsMaxHp);
     /// <inheritdoc cref="EngineLayout.StatsOverrideName"/>
     public ref IntPtr OverrideName => ref *(IntPtr*)(Ptr + EngineLayout.StatsOverrideName);
     /// <inheritdoc cref="EngineLayout.StatsOverrideNameLen"/>
     public ref uint OverrideNameLen => ref *(uint*)(Ptr + EngineLayout.StatsOverrideNameLen);
-    /// <inheritdoc cref="EngineLayout.StatsTempHp"/>
-    public ref short TempHp => ref *(short*)(Ptr + EngineLayout.StatsTempHp);
 }
 
 /// <summary>Typed view of an engine <c>CNWCItem*</c>.</summary>
@@ -2067,6 +2103,10 @@ public readonly unsafe partial struct CNWCItem(IntPtr ptr)
     public readonly IntPtr Ptr = ptr;
     /// <summary>No object.</summary>
     public bool IsNull => Ptr == IntPtr.Zero;
+    /// <inheritdoc cref="EngineLayout.ItemActiveProperties"/>
+    public ref CNWItemProperty ActiveProperties => ref *(CNWItemProperty*)(Ptr + EngineLayout.ItemActiveProperties);
+    /// <inheritdoc cref="EngineLayout.ItemActivePropertyCount"/>
+    public ref int ActivePropertyCount => ref *(int*)(Ptr + EngineLayout.ItemActivePropertyCount);
     /// <inheritdoc cref="EngineLayout.ItemAsObject"/>
     public CNWCObject AsObject => new(Ptr + EngineLayout.ItemAsObject);
     /// <inheritdoc cref="EngineLayout.ItemBaseItem"/>
@@ -2095,6 +2135,10 @@ public readonly unsafe partial struct CNWCItem(IntPtr ptr)
     public void ItemShowFeedbackBubbleText() => EngineFn.ItemShowFeedbackBubbleText(Ptr);
     /// <inheritdoc cref="EngineLayout.ItemModels"/>
     public Span<ushort> Models { [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)] get => new((void*)(Ptr + EngineLayout.ItemModels), 19); }
+    /// <inheritdoc cref="EngineLayout.ItemPendingX"/>
+    public ref byte PendingX => ref *(byte*)(Ptr + EngineLayout.ItemPendingX);
+    /// <inheritdoc cref="EngineLayout.ItemPendingY"/>
+    public ref byte PendingY => ref *(byte*)(Ptr + EngineLayout.ItemPendingY);
     /// <inheritdoc cref="EngineLayout.ItemPossessor"/>
     public ref uint Possessor => ref *(uint*)(Ptr + EngineLayout.ItemPossessor);
     /// <inheritdoc cref="EngineLayout.ItemRepoX"/>
@@ -2291,6 +2335,19 @@ public readonly unsafe ref partial struct CNWCVisualEffectOnObject(IntPtr ptr)
     public ObjectVisualTransformData Transform => new(Ptr + EngineLayout.EffectTransform);
 }
 
+/// <summary>Typed view of an engine <c>CNWItemProperty*</c>.</summary>
+public readonly unsafe partial struct CNWItemProperty(IntPtr ptr)
+{
+    /// <summary>The engine object.</summary>
+    public readonly IntPtr Ptr = ptr;
+    /// <summary>No object.</summary>
+    public bool IsNull => Ptr == IntPtr.Zero;
+    /// <inheritdoc cref="EngineLayout.ItemPropertyType"/>
+    public ref ushort PropertyName => ref *(ushort*)(Ptr + EngineLayout.ItemPropertyType);
+    /// <inheritdoc cref="EngineLayout.ItemPropertyStride"/>
+    public CNWItemProperty this[int i] => new(Ptr + i * EngineLayout.ItemPropertyStride);
+}
+
 /// <summary>Typed view of an engine <c>CNWMessage*</c>.</summary>
 public readonly unsafe partial struct CNWMessage(IntPtr ptr)
 {
@@ -2428,6 +2485,8 @@ public readonly unsafe partial struct CPanelInventory(IntPtr ptr)
     public void InvContainerPageUp() => EngineFn.InvContainerPageUp(Ptr);
     /// <inheritdoc cref="SymbolMap.InvContainerPagenum"/>
     public void InvContainerPagenum(int show, byte count) => EngineFn.InvContainerPagenum(Ptr, show, count);
+    /// <inheritdoc cref="SymbolMap.InvGetEquipSlot"/>
+    public CGuiInvbox InvGetEquipSlot(int slotMask) => new CGuiInvbox(EngineFn.InvGetEquipSlot(Ptr, slotMask));
     /// <inheritdoc cref="SymbolMap.InvSetCharacterData"/>
     public void InvSetCharacterData(uint oid) => EngineFn.InvSetCharacterData(Ptr, oid);
     /// <inheritdoc cref="SymbolMap.InvSetContainerGuiVisible"/>
@@ -4306,6 +4365,10 @@ public static unsafe class EngineFn
     private static bool _ActionTargetLMouseDownDone;
     /// <inheritdoc cref="SymbolMap.ActionTargetLMouseDown"/>
     public static ActionTargetLMouseDownFn ActionTargetLMouseDown => (ActionTargetLMouseDownFn)(_ActionTargetLMouseDownDone ? _ActionTargetLMouseDown : Resolve(ref _ActionTargetLMouseDown, ref _ActionTargetLMouseDownDone, SymbolMap.ActionTargetLMouseDown));
+    private static IntPtr _ActionTargetUpdate;
+    private static bool _ActionTargetUpdateDone;
+    /// <inheritdoc cref="SymbolMap.ActionTargetUpdate"/>
+    public static ActionTargetUpdateFn ActionTargetUpdate => (ActionTargetUpdateFn)(_ActionTargetUpdateDone ? _ActionTargetUpdate : Resolve(ref _ActionTargetUpdate, ref _ActionTargetUpdateDone, SymbolMap.ActionTargetUpdate));
     private static IntPtr _PerformDefaultActionOnObject;
     private static bool _PerformDefaultActionOnObjectDone;
     /// <inheritdoc cref="SymbolMap.PerformDefaultActionOnObject"/>
@@ -4407,6 +4470,10 @@ public static unsafe class EngineFn
     private static bool _TlkReloadDone;
     /// <inheritdoc cref="SymbolMap.TlkReload"/>
     public static TlkReloadFn TlkReload => (TlkReloadFn)(_TlkReloadDone ? _TlkReload : Resolve(ref _TlkReload, ref _TlkReloadDone, SymbolMap.TlkReload));
+    private static IntPtr _RulesReloadAll;
+    private static bool _RulesReloadAllDone;
+    /// <inheritdoc cref="SymbolMap.RulesReloadAll"/>
+    public static RulesReloadAllFn RulesReloadAll => (RulesReloadAllFn)(_RulesReloadAllDone ? _RulesReloadAll : Resolve(ref _RulesReloadAll, ref _RulesReloadAllDone, SymbolMap.RulesReloadAll));
     private static IntPtr _GetViewPort;
     private static bool _GetViewPortDone;
     /// <inheritdoc cref="SymbolMap.GetViewPort"/>
@@ -4967,6 +5034,18 @@ public static unsafe class EngineFn
     private static bool _SdlWarpMouseInWindowDone;
     /// <inheritdoc cref="SymbolMap.SdlWarpMouseInWindow"/>
     public static SdlWarpMouseInWindowFn SdlWarpMouseInWindow => (SdlWarpMouseInWindowFn)(_SdlWarpMouseInWindowDone ? _SdlWarpMouseInWindow : Resolve(ref _SdlWarpMouseInWindow, ref _SdlWarpMouseInWindowDone, SymbolMap.SdlWarpMouseInWindow));
+    private static IntPtr _SdlShowCursor;
+    private static bool _SdlShowCursorDone;
+    /// <inheritdoc cref="SymbolMap.SdlShowCursor"/>
+    public static SdlShowCursorFn SdlShowCursor => (SdlShowCursorFn)(_SdlShowCursorDone ? _SdlShowCursor : Resolve(ref _SdlShowCursor, ref _SdlShowCursorDone, SymbolMap.SdlShowCursor));
+    private static IntPtr _SdlSetWindowGrab;
+    private static bool _SdlSetWindowGrabDone;
+    /// <inheritdoc cref="SymbolMap.SdlSetWindowGrab"/>
+    public static SdlSetWindowGrabFn SdlSetWindowGrab => (SdlSetWindowGrabFn)(_SdlSetWindowGrabDone ? _SdlSetWindowGrab : Resolve(ref _SdlSetWindowGrab, ref _SdlSetWindowGrabDone, SymbolMap.SdlSetWindowGrab));
+    private static IntPtr _SdlGetWindowGrab;
+    private static bool _SdlGetWindowGrabDone;
+    /// <inheritdoc cref="SymbolMap.SdlGetWindowGrab"/>
+    public static SdlGetWindowGrabFn SdlGetWindowGrab => (SdlGetWindowGrabFn)(_SdlGetWindowGrabDone ? _SdlGetWindowGrab : Resolve(ref _SdlGetWindowGrab, ref _SdlGetWindowGrabDone, SymbolMap.SdlGetWindowGrab));
     private static IntPtr _GuiInGameToggleOff;
     private static bool _GuiInGameToggleOffDone;
     /// <inheritdoc cref="SymbolMap.GuiInGameToggleOff"/>
@@ -5535,6 +5614,18 @@ public static unsafe class EngineFn
     private static bool _InvSetCharacterDataDone;
     /// <inheritdoc cref="SymbolMap.InvSetCharacterData"/>
     public static InvSetCharacterDataFn InvSetCharacterData => (InvSetCharacterDataFn)(_InvSetCharacterDataDone ? _InvSetCharacterData : Resolve(ref _InvSetCharacterData, ref _InvSetCharacterDataDone, SymbolMap.InvSetCharacterData));
+    private static IntPtr _InvGetEquipSlot;
+    private static bool _InvGetEquipSlotDone;
+    /// <inheritdoc cref="SymbolMap.InvGetEquipSlot"/>
+    public static InvGetEquipSlotFn InvGetEquipSlot => (InvGetEquipSlotFn)(_InvGetEquipSlotDone ? _InvGetEquipSlot : Resolve(ref _InvGetEquipSlot, ref _InvGetEquipSlotDone, SymbolMap.InvGetEquipSlot));
+    private static IntPtr _PlayGuiSound;
+    private static bool _PlayGuiSoundDone;
+    /// <inheritdoc cref="SymbolMap.PlayGuiSound"/>
+    public static PlayGuiSoundFn PlayGuiSound => (PlayGuiSoundFn)(_PlayGuiSoundDone ? _PlayGuiSound : Resolve(ref _PlayGuiSound, ref _PlayGuiSoundDone, SymbolMap.PlayGuiSound));
+    private static IntPtr _InvboxHandleDoubleClick;
+    private static bool _InvboxHandleDoubleClickDone;
+    /// <inheritdoc cref="SymbolMap.InvboxHandleDoubleClick"/>
+    public static InvboxHandleDoubleClickFn InvboxHandleDoubleClick => (InvboxHandleDoubleClickFn)(_InvboxHandleDoubleClickDone ? _InvboxHandleDoubleClick : Resolve(ref _InvboxHandleDoubleClick, ref _InvboxHandleDoubleClickDone, SymbolMap.InvboxHandleDoubleClick));
     private static IntPtr _GameCameraHitCheck;
     private static bool _GameCameraHitCheckDone;
     /// <inheritdoc cref="SymbolMap.GameCameraHitCheck"/>
@@ -5547,6 +5638,10 @@ public static unsafe class EngineFn
     private static bool _SendBarterStartDone;
     /// <inheritdoc cref="SymbolMap.SendBarterStart"/>
     public static SendBarterStartFn SendBarterStart => (SendBarterStartFn)(_SendBarterStartDone ? _SendBarterStart : Resolve(ref _SendBarterStart, ref _SendBarterStartDone, SymbolMap.SendBarterStart));
+    private static IntPtr _SendBarterAddItem;
+    private static bool _SendBarterAddItemDone;
+    /// <inheritdoc cref="SymbolMap.SendBarterAddItem"/>
+    public static SendBarterAddItemFn SendBarterAddItem => (SendBarterAddItemFn)(_SendBarterAddItemDone ? _SendBarterAddItem : Resolve(ref _SendBarterAddItem, ref _SendBarterAddItemDone, SymbolMap.SendBarterAddItem));
     private static IntPtr _SendInputUseItem;
     private static bool _SendInputUseItemDone;
     /// <inheritdoc cref="SymbolMap.SendInputUseItem"/>
@@ -5651,6 +5746,14 @@ public static unsafe class EngineFn
     private static bool _InvboxAddItemDone;
     /// <inheritdoc cref="SymbolMap.InvboxAddItem"/>
     public static InvboxAddItemFn InvboxAddItem => (InvboxAddItemFn)(_InvboxAddItemDone ? _InvboxAddItem : Resolve(ref _InvboxAddItem, ref _InvboxAddItemDone, SymbolMap.InvboxAddItem));
+    private static IntPtr _MultiInvboxAddItem;
+    private static bool _MultiInvboxAddItemDone;
+    /// <inheritdoc cref="SymbolMap.MultiInvboxAddItem"/>
+    public static MultiInvboxAddItemFn MultiInvboxAddItem => (MultiInvboxAddItemFn)(_MultiInvboxAddItemDone ? _MultiInvboxAddItem : Resolve(ref _MultiInvboxAddItem, ref _MultiInvboxAddItemDone, SymbolMap.MultiInvboxAddItem));
+    private static IntPtr _MultiInvboxCellFree;
+    private static bool _MultiInvboxCellFreeDone;
+    /// <inheritdoc cref="SymbolMap.MultiInvboxCellFree"/>
+    public static MultiInvboxCellFreeFn MultiInvboxCellFree => (MultiInvboxCellFreeFn)(_MultiInvboxCellFreeDone ? _MultiInvboxCellFree : Resolve(ref _MultiInvboxCellFree, ref _MultiInvboxCellFreeDone, SymbolMap.MultiInvboxCellFree));
     private static IntPtr _InvSetContainerGuiVisible;
     private static bool _InvSetContainerGuiVisibleDone;
     /// <inheritdoc cref="SymbolMap.InvSetContainerGuiVisible"/>
@@ -5700,6 +5803,10 @@ public static unsafe class EngineFn
     private static bool _SendStoreRequestSellDone;
     /// <inheritdoc cref="SymbolMap.SendStoreRequestSell"/>
     public static SendStoreRequestSellFn SendStoreRequestSell => (SendStoreRequestSellFn)(_SendStoreRequestSellDone ? _SendStoreRequestSell : Resolve(ref _SendStoreRequestSell, ref _SendStoreRequestSellDone, SymbolMap.SendStoreRequestSell));
+    private static IntPtr _SendStoreRequestBuy;
+    private static bool _SendStoreRequestBuyDone;
+    /// <inheritdoc cref="SymbolMap.SendStoreRequestBuy"/>
+    public static SendStoreRequestBuyFn SendStoreRequestBuy => (SendStoreRequestBuyFn)(_SendStoreRequestBuyDone ? _SendStoreRequestBuy : Resolve(ref _SendStoreRequestBuy, ref _SendStoreRequestBuyDone, SymbolMap.SendStoreRequestBuy));
     private static IntPtr _StoreMouseoverInventoryItem;
     private static bool _StoreMouseoverInventoryItemDone;
     /// <inheritdoc cref="SymbolMap.StoreMouseoverInventoryItem"/>
@@ -6362,6 +6469,12 @@ public static unsafe class EngineHooks
     /// <summary>Chains onto <see cref="SymbolMap.ActionTargetLMouseDown"/>; returns the slot holding the next layer, or null.</summary>
     public static ActionTargetLMouseDownFn* ChainActionTargetLMouseDown(this HookService h, ActionTargetLMouseDownFn handler, int priority) =>
         (ActionTargetLMouseDownFn*)h.Chain(SymbolMap.ActionTargetLMouseDown, (IntPtr)handler, priority);
+    /// <summary>Hooks <see cref="SymbolMap.ActionTargetUpdate"/>; returns the original, or null.</summary>
+    public static ActionTargetUpdateFn InstallActionTargetUpdate(this HookService h, ActionTargetUpdateFn handler) =>
+        (ActionTargetUpdateFn)h.Install(SymbolMap.ActionTargetUpdate, (IntPtr)handler);
+    /// <summary>Chains onto <see cref="SymbolMap.ActionTargetUpdate"/>; returns the slot holding the next layer, or null.</summary>
+    public static ActionTargetUpdateFn* ChainActionTargetUpdate(this HookService h, ActionTargetUpdateFn handler, int priority) =>
+        (ActionTargetUpdateFn*)h.Chain(SymbolMap.ActionTargetUpdate, (IntPtr)handler, priority);
     /// <summary>Hooks <see cref="SymbolMap.PerformDefaultActionOnObject"/>; returns the original, or null.</summary>
     public static PerformDefaultActionOnObjectFn InstallPerformDefaultActionOnObject(this HookService h, PerformDefaultActionOnObjectFn handler) =>
         (PerformDefaultActionOnObjectFn)h.Install(SymbolMap.PerformDefaultActionOnObject, (IntPtr)handler);
@@ -6500,6 +6613,12 @@ public static unsafe class EngineHooks
     /// <summary>Chains onto <see cref="SymbolMap.TlkReload"/>; returns the slot holding the next layer, or null.</summary>
     public static TlkReloadFn* ChainTlkReload(this HookService h, TlkReloadFn handler, int priority) =>
         (TlkReloadFn*)h.Chain(SymbolMap.TlkReload, (IntPtr)handler, priority);
+    /// <summary>Hooks <see cref="SymbolMap.RulesReloadAll"/>; returns the original, or null.</summary>
+    public static RulesReloadAllFn InstallRulesReloadAll(this HookService h, RulesReloadAllFn handler) =>
+        (RulesReloadAllFn)h.Install(SymbolMap.RulesReloadAll, (IntPtr)handler);
+    /// <summary>Chains onto <see cref="SymbolMap.RulesReloadAll"/>; returns the slot holding the next layer, or null.</summary>
+    public static RulesReloadAllFn* ChainRulesReloadAll(this HookService h, RulesReloadAllFn handler, int priority) =>
+        (RulesReloadAllFn*)h.Chain(SymbolMap.RulesReloadAll, (IntPtr)handler, priority);
     /// <summary>Hooks <see cref="SymbolMap.GetViewPort"/>; returns the original, or null.</summary>
     public static GetViewPortFn InstallGetViewPort(this HookService h, GetViewPortFn handler) =>
         (GetViewPortFn)h.Install(SymbolMap.GetViewPort, (IntPtr)handler);
@@ -7340,6 +7459,24 @@ public static unsafe class EngineHooks
     /// <summary>Chains onto <see cref="SymbolMap.SdlWarpMouseInWindow"/>; returns the slot holding the next layer, or null.</summary>
     public static SdlWarpMouseInWindowFn* ChainSdlWarpMouseInWindow(this HookService h, SdlWarpMouseInWindowFn handler, int priority) =>
         (SdlWarpMouseInWindowFn*)h.Chain(SymbolMap.SdlWarpMouseInWindow, (IntPtr)handler, priority);
+    /// <summary>Hooks <see cref="SymbolMap.SdlShowCursor"/>; returns the original, or null.</summary>
+    public static SdlShowCursorFn InstallSdlShowCursor(this HookService h, SdlShowCursorFn handler) =>
+        (SdlShowCursorFn)h.Install(SymbolMap.SdlShowCursor, (IntPtr)handler);
+    /// <summary>Chains onto <see cref="SymbolMap.SdlShowCursor"/>; returns the slot holding the next layer, or null.</summary>
+    public static SdlShowCursorFn* ChainSdlShowCursor(this HookService h, SdlShowCursorFn handler, int priority) =>
+        (SdlShowCursorFn*)h.Chain(SymbolMap.SdlShowCursor, (IntPtr)handler, priority);
+    /// <summary>Hooks <see cref="SymbolMap.SdlSetWindowGrab"/>; returns the original, or null.</summary>
+    public static SdlSetWindowGrabFn InstallSdlSetWindowGrab(this HookService h, SdlSetWindowGrabFn handler) =>
+        (SdlSetWindowGrabFn)h.Install(SymbolMap.SdlSetWindowGrab, (IntPtr)handler);
+    /// <summary>Chains onto <see cref="SymbolMap.SdlSetWindowGrab"/>; returns the slot holding the next layer, or null.</summary>
+    public static SdlSetWindowGrabFn* ChainSdlSetWindowGrab(this HookService h, SdlSetWindowGrabFn handler, int priority) =>
+        (SdlSetWindowGrabFn*)h.Chain(SymbolMap.SdlSetWindowGrab, (IntPtr)handler, priority);
+    /// <summary>Hooks <see cref="SymbolMap.SdlGetWindowGrab"/>; returns the original, or null.</summary>
+    public static SdlGetWindowGrabFn InstallSdlGetWindowGrab(this HookService h, SdlGetWindowGrabFn handler) =>
+        (SdlGetWindowGrabFn)h.Install(SymbolMap.SdlGetWindowGrab, (IntPtr)handler);
+    /// <summary>Chains onto <see cref="SymbolMap.SdlGetWindowGrab"/>; returns the slot holding the next layer, or null.</summary>
+    public static SdlGetWindowGrabFn* ChainSdlGetWindowGrab(this HookService h, SdlGetWindowGrabFn handler, int priority) =>
+        (SdlGetWindowGrabFn*)h.Chain(SymbolMap.SdlGetWindowGrab, (IntPtr)handler, priority);
     /// <summary>Hooks <see cref="SymbolMap.GuiInGameToggleOff"/>; returns the original, or null.</summary>
     public static GuiInGameToggleOffFn InstallGuiInGameToggleOff(this HookService h, GuiInGameToggleOffFn handler) =>
         (GuiInGameToggleOffFn)h.Install(SymbolMap.GuiInGameToggleOff, (IntPtr)handler);
@@ -8138,6 +8275,24 @@ public static unsafe class EngineHooks
     /// <summary>Chains onto <see cref="SymbolMap.InvSetCharacterData"/>; returns the slot holding the next layer, or null.</summary>
     public static InvSetCharacterDataFn* ChainInvSetCharacterData(this HookService h, InvSetCharacterDataFn handler, int priority) =>
         (InvSetCharacterDataFn*)h.Chain(SymbolMap.InvSetCharacterData, (IntPtr)handler, priority);
+    /// <summary>Hooks <see cref="SymbolMap.InvGetEquipSlot"/>; returns the original, or null.</summary>
+    public static InvGetEquipSlotFn InstallInvGetEquipSlot(this HookService h, InvGetEquipSlotFn handler) =>
+        (InvGetEquipSlotFn)h.Install(SymbolMap.InvGetEquipSlot, (IntPtr)handler);
+    /// <summary>Chains onto <see cref="SymbolMap.InvGetEquipSlot"/>; returns the slot holding the next layer, or null.</summary>
+    public static InvGetEquipSlotFn* ChainInvGetEquipSlot(this HookService h, InvGetEquipSlotFn handler, int priority) =>
+        (InvGetEquipSlotFn*)h.Chain(SymbolMap.InvGetEquipSlot, (IntPtr)handler, priority);
+    /// <summary>Hooks <see cref="SymbolMap.PlayGuiSound"/>; returns the original, or null.</summary>
+    public static PlayGuiSoundFn InstallPlayGuiSound(this HookService h, PlayGuiSoundFn handler) =>
+        (PlayGuiSoundFn)h.Install(SymbolMap.PlayGuiSound, (IntPtr)handler);
+    /// <summary>Chains onto <see cref="SymbolMap.PlayGuiSound"/>; returns the slot holding the next layer, or null.</summary>
+    public static PlayGuiSoundFn* ChainPlayGuiSound(this HookService h, PlayGuiSoundFn handler, int priority) =>
+        (PlayGuiSoundFn*)h.Chain(SymbolMap.PlayGuiSound, (IntPtr)handler, priority);
+    /// <summary>Hooks <see cref="SymbolMap.InvboxHandleDoubleClick"/>; returns the original, or null.</summary>
+    public static InvboxHandleDoubleClickFn InstallInvboxHandleDoubleClick(this HookService h, InvboxHandleDoubleClickFn handler) =>
+        (InvboxHandleDoubleClickFn)h.Install(SymbolMap.InvboxHandleDoubleClick, (IntPtr)handler);
+    /// <summary>Chains onto <see cref="SymbolMap.InvboxHandleDoubleClick"/>; returns the slot holding the next layer, or null.</summary>
+    public static InvboxHandleDoubleClickFn* ChainInvboxHandleDoubleClick(this HookService h, InvboxHandleDoubleClickFn handler, int priority) =>
+        (InvboxHandleDoubleClickFn*)h.Chain(SymbolMap.InvboxHandleDoubleClick, (IntPtr)handler, priority);
     /// <summary>Hooks <see cref="SymbolMap.GameCameraHitCheck"/>; returns the original, or null.</summary>
     public static GameCameraHitCheckFn InstallGameCameraHitCheck(this HookService h, GameCameraHitCheckFn handler) =>
         (GameCameraHitCheckFn)h.Install(SymbolMap.GameCameraHitCheck, (IntPtr)handler);
@@ -8156,6 +8311,12 @@ public static unsafe class EngineHooks
     /// <summary>Chains onto <see cref="SymbolMap.SendBarterStart"/>; returns the slot holding the next layer, or null.</summary>
     public static SendBarterStartFn* ChainSendBarterStart(this HookService h, SendBarterStartFn handler, int priority) =>
         (SendBarterStartFn*)h.Chain(SymbolMap.SendBarterStart, (IntPtr)handler, priority);
+    /// <summary>Hooks <see cref="SymbolMap.SendBarterAddItem"/>; returns the original, or null.</summary>
+    public static SendBarterAddItemFn InstallSendBarterAddItem(this HookService h, SendBarterAddItemFn handler) =>
+        (SendBarterAddItemFn)h.Install(SymbolMap.SendBarterAddItem, (IntPtr)handler);
+    /// <summary>Chains onto <see cref="SymbolMap.SendBarterAddItem"/>; returns the slot holding the next layer, or null.</summary>
+    public static SendBarterAddItemFn* ChainSendBarterAddItem(this HookService h, SendBarterAddItemFn handler, int priority) =>
+        (SendBarterAddItemFn*)h.Chain(SymbolMap.SendBarterAddItem, (IntPtr)handler, priority);
     /// <summary>Hooks <see cref="SymbolMap.SendInputUseItem"/>; returns the original, or null.</summary>
     public static SendInputUseItemFn InstallSendInputUseItem(this HookService h, SendInputUseItemFn handler) =>
         (SendInputUseItemFn)h.Install(SymbolMap.SendInputUseItem, (IntPtr)handler);
@@ -8312,6 +8473,18 @@ public static unsafe class EngineHooks
     /// <summary>Chains onto <see cref="SymbolMap.InvboxAddItem"/>; returns the slot holding the next layer, or null.</summary>
     public static InvboxAddItemFn* ChainInvboxAddItem(this HookService h, InvboxAddItemFn handler, int priority) =>
         (InvboxAddItemFn*)h.Chain(SymbolMap.InvboxAddItem, (IntPtr)handler, priority);
+    /// <summary>Hooks <see cref="SymbolMap.MultiInvboxAddItem"/>; returns the original, or null.</summary>
+    public static MultiInvboxAddItemFn InstallMultiInvboxAddItem(this HookService h, MultiInvboxAddItemFn handler) =>
+        (MultiInvboxAddItemFn)h.Install(SymbolMap.MultiInvboxAddItem, (IntPtr)handler);
+    /// <summary>Chains onto <see cref="SymbolMap.MultiInvboxAddItem"/>; returns the slot holding the next layer, or null.</summary>
+    public static MultiInvboxAddItemFn* ChainMultiInvboxAddItem(this HookService h, MultiInvboxAddItemFn handler, int priority) =>
+        (MultiInvboxAddItemFn*)h.Chain(SymbolMap.MultiInvboxAddItem, (IntPtr)handler, priority);
+    /// <summary>Hooks <see cref="SymbolMap.MultiInvboxCellFree"/>; returns the original, or null.</summary>
+    public static MultiInvboxCellFreeFn InstallMultiInvboxCellFree(this HookService h, MultiInvboxCellFreeFn handler) =>
+        (MultiInvboxCellFreeFn)h.Install(SymbolMap.MultiInvboxCellFree, (IntPtr)handler);
+    /// <summary>Chains onto <see cref="SymbolMap.MultiInvboxCellFree"/>; returns the slot holding the next layer, or null.</summary>
+    public static MultiInvboxCellFreeFn* ChainMultiInvboxCellFree(this HookService h, MultiInvboxCellFreeFn handler, int priority) =>
+        (MultiInvboxCellFreeFn*)h.Chain(SymbolMap.MultiInvboxCellFree, (IntPtr)handler, priority);
     /// <summary>Hooks <see cref="SymbolMap.InvSetContainerGuiVisible"/>; returns the original, or null.</summary>
     public static InvSetContainerGuiVisibleFn InstallInvSetContainerGuiVisible(this HookService h, InvSetContainerGuiVisibleFn handler) =>
         (InvSetContainerGuiVisibleFn)h.Install(SymbolMap.InvSetContainerGuiVisible, (IntPtr)handler);
@@ -8372,6 +8545,12 @@ public static unsafe class EngineHooks
     /// <summary>Chains onto <see cref="SymbolMap.SendStoreRequestSell"/>; returns the slot holding the next layer, or null.</summary>
     public static SendStoreRequestSellFn* ChainSendStoreRequestSell(this HookService h, SendStoreRequestSellFn handler, int priority) =>
         (SendStoreRequestSellFn*)h.Chain(SymbolMap.SendStoreRequestSell, (IntPtr)handler, priority);
+    /// <summary>Hooks <see cref="SymbolMap.SendStoreRequestBuy"/>; returns the original, or null.</summary>
+    public static SendStoreRequestBuyFn InstallSendStoreRequestBuy(this HookService h, SendStoreRequestBuyFn handler) =>
+        (SendStoreRequestBuyFn)h.Install(SymbolMap.SendStoreRequestBuy, (IntPtr)handler);
+    /// <summary>Chains onto <see cref="SymbolMap.SendStoreRequestBuy"/>; returns the slot holding the next layer, or null.</summary>
+    public static SendStoreRequestBuyFn* ChainSendStoreRequestBuy(this HookService h, SendStoreRequestBuyFn handler, int priority) =>
+        (SendStoreRequestBuyFn*)h.Chain(SymbolMap.SendStoreRequestBuy, (IntPtr)handler, priority);
     /// <summary>Hooks <see cref="SymbolMap.StoreMouseoverInventoryItem"/>; returns the original, or null.</summary>
     public static StoreMouseoverInventoryItemFn InstallStoreMouseoverInventoryItem(this HookService h, StoreMouseoverInventoryItemFn handler) =>
         (StoreMouseoverInventoryItemFn)h.Install(SymbolMap.StoreMouseoverInventoryItem, (IntPtr)handler);

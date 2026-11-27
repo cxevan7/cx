@@ -22,7 +22,6 @@ public sealed unsafe partial class AlloyRenderer
     {
         int n = 0, nb = 0, na = 0;
         PrepareVisible();
-        OccludeFrame();   // #537: the hit fan this walk tags occluders from
         {
         for (int c = (int)AlloyClass.Opaque; c <= (int)AlloyClass.Cutout; c++)
         {
@@ -49,14 +48,12 @@ public sealed unsafe partial class AlloyRenderer
                     Counters._skipFogTile++;
                     _oFading[i] = true; continue;
                 }
-                _oFading[i] = OccludeFan.CasterFading(fade, _gate[i].OccFade);
-                // #537: a faded occluder is a translucent part like any other, so it takes the blended run too.
-                // ...and the object's own fade (CNWCObject::FadeObject through SetColorShifting): a creature or
+                _oFading[i] = fade < 1f;
+                // The object's own fade (CNWCObject::FadeObject through SetColorShifting): a creature or
                 // placeable the server adds or drops in perception range fades over 2 s, as vanilla's does
                 float objAlpha = DbObjAlpha(i);
                 if (objAlpha <= 0f) continue;
-                float alpha = OccludeFan.Fold(PartAlphaCached(i, tri), fade, OccludeVerdict(i),
-                                              DbSlot(i) && SceneDb.PartDissolve[_oDbPart[i]] < 1f) * objAlpha;
+                float alpha = PartAlphaCached(i, tri) * fade * objAlpha;
                 bool dis = alpha >= 1f && Dissolves(i, tri, ref _stageCounters[0]);
                 if (samp) FrameZones.AddSampled(FrameZones.Zone.Fade, tFade, ChaseEvery);
                 if (alpha < 1f)
@@ -214,6 +211,7 @@ public sealed unsafe partial class AlloyRenderer
                      "a blended material on an unfaded object, creature or static, composites every layer");
         check.Expect(OitGrouped(objAlpha: 1f, decal: true, wash: WashWhole), "a ground decal keeps its object");
         check.Expect(OitGrouped(objAlpha: 1f, decal: false, wash: WashSplit), "a split wash's rest keeps its object");
+        check.Expect(OitGrouped(objAlpha: 1f, decal: false, wash: WashGradedPlt), "a graded cloak's rest keeps its object");
         check.Expect(!OitGrouped(objAlpha: 1f, decal: false, wash: WashWhole), "a whole wash on a fading tile does not");
         check.Expect(GhostCurve(0.5f, 2f) == 0.75f && GhostCurve(0.25f, 1f) == 0.25f,
                      "a ghost draws as n layers of itself: half at two layers is three quarters, one layer is unchanged");
@@ -361,8 +359,8 @@ public sealed unsafe partial class AlloyRenderer
 
     /// <summary>Does a blended draw carry its run root as its OIT object id? When its object is faded as a whole --
     /// ghosting, the one case where an object must not show its own interior -- and for a ground decal or a split
-    /// wash's rest, whose stacked sheets composite as one layer per object.</summary>
-    internal static bool OitGrouped(float objAlpha, bool decal, byte wash) => objAlpha < 1f || decal || wash == WashSplit;
+    /// wash's rest or a graded palette part's, whose stacked sheets composite as one layer per object.</summary>
+    internal static bool OitGrouped(float objAlpha, bool decal, byte wash) => objAlpha < 1f || decal || WashSplits(wash);
 
     /// <summary>The object alpha slot <paramref name="i"/> draws with. Where the list resolve composites a faded object
     /// once, its overlapping parts no longer thicken it, so it draws as <c>alloy.ghost</c> layers of itself.</summary>
@@ -626,7 +624,6 @@ public sealed unsafe partial class AlloyRenderer
         // CX-188: and the texture memo with it -- a re-tenanted slot's handles and tids describe its
         // predecessor, and this is the one signal that _oDbRecipe may have been re-pointed under them.
         _recTexStamp[i] = 0;
-        UnstampChase(i);
     }
 
     /// <summary>This record moved and has to reach the GPU again. Overflow is not a silent drop -- it promotes
@@ -975,10 +972,11 @@ public sealed unsafe partial class AlloyRenderer
         row.Moved = SlotMoverNow(i, posed, dangly);
     }
 
-    /// <summary>The mesh LOD level a row draws at this frame, off the cull's own sphere and the pass's eye.</summary>
-    private static int RowLevel(int i)
+    /// <summary>The mesh LOD level a row draws at this frame, off the cull's own sphere and the pass's eye; 0 for a
+    /// model that ships its own <c>.lod</c>.</summary>
+    internal static int RowLevel(int i)
     {
-        if (!MeshLod.On || _lodScale <= 0f) return 0;
+        if (!MeshLod.On || _lodScale <= 0f || DbAuthoredLod(i)) return 0;
         ref Sphere lsp = ref _dSph[i];
         if (lsp.Radius >= NeverCull) return 0;
         float dx = lsp.Center.X - _eyePos.X, dy = lsp.Center.Y - _eyePos.Y, dz = lsp.Center.Z - _eyePos.Z;

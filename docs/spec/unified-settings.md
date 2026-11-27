@@ -298,7 +298,7 @@ its own, and *no CX* is an uninstall."
 | key | label | kind | range · default | tier | eff | section | help |
 |---|---|---|---|---|---|---|---|
 | general.commands | Enable chat commands | T | off | U | L | — | Lets `/grass`, `/shadow` and the other CX commands work in chat. Off, they go to the server like any other text — some servers use the same names. `/settings` always works. |
-| general.hookdebug / pin / resizeat / frametimes | — | T, S | as declared | C | R, `frametimes` L | — | funchook trace, main-thread affinity, the timed window resize, and the per-frame time list in the log |
+| general.hookdebug / pin / resizeat / frametimes / steplog | — | T, S | as declared | C | R, `frametimes` and `steplog` L | — | funchook trace, main-thread affinity, the timed window resize, the per-frame time list in the log, and the step guard's refusals and player position in the log |
 
 cx.log is always written: no setting turns it off, and a key an older CX wrote for that is dropped when cx.cfg is read.
 
@@ -314,7 +314,9 @@ the one `CX.Framework.Product` const set that `HotkeyProtocol.AbuseContact` also
 | about.savelog | Save my log for a bug report | B | — | U | — | — | Saves cx-report.log next to cx.log and copies its path. Attach cx-report.log to your report, not cx.log: CX keeps writing cx.log while the game runs, and Discord or the browser refuses a file that changes while it uploads. |
 | about.updates | Tell me about new CX releases | D | Not answered yet / Yes / No · Not answered yet | U | L | — | Once a session CX asks the CX releases page whether a newer release is out, and shows a badge on the main-menu gear. It never downloads or installs anything. |
 | about.updatecopy | Copy download link | B | — | U | — | — | Copies the CX releases page's address. Shown while a newer release stands; its note names the release and its changelog lines. |
+| about.updatesum | Copy checksum | B | — | U | — | — | Copies the SHA-256 of this release's zip for your OS. Shown while a newer release stands whose signed notice names that zip; the row shows the zip's name and checksum. |
 | about.updatemute1 | Don't tell me about vX.Y.Z | B | — | U | — | — | Hides the badge and this release until a newer one is out. Shown while a newer release stands; the label names it. |
+| about.releasekey | Copy release key | B | — | U | — | — | Copies the release key this install trusts, as an `allowed_signers` file for checking a download. Always shown; the row shows each key's fingerprint as `ssh-keygen` prints it. |
 | about.updatefound / updateseen / updatemute | — | X | "" | H | L | — | the newest signed release found, the one About was last opened for, and the one muted |
 
 While **Tell me about new CX releases** is unanswered, the main-menu gear wears a badge whose
@@ -439,8 +441,6 @@ takes no pointer. *Click-through* (`w<N>.clickthrough`) is a row of every window
 | nameplate.maxdist | Visible distance | S | 0–100 m step 5 · 45 | U | L | Nameplates and bubbles | Names and bubbles past this distance are not drawn. 0 draws them all. |
 | nameplate.portraits | Portrait | T | on | U | L | Nameplates | A portrait beside the name. |
 | nameplate.healthband | Health colour | T | on | U | L | Nameplates | The name is tinted by the creature's health, as in the stock game. |
-| nameplate.healthbar | Health bar | T | off | U | L | Nameplates | A thin bar under the name. Exact for you and your party; others by injury level. Not in the stock game. |
-| nameplate.barwidth | Health bar width | S | 0–200 px step 10 · 0 | U | L | Nameplates | Every health bar is this wide. 0 makes each as wide as its name. Shows only while Health bar is on. |
 | nameplate.apart | Keep names apart | T | off | U | L | Nameplates | Nameplates that would overlap move apart and stack. Off, each stays over its creature and they overlap, as in the stock game. |
 | nameplate.titles | Titles on their own line | T | on | A | L | Nameplates | A long name's part in brackets, like [Wide-Eyed Machinist], goes on a line of its own. |
 | nameplate.whiletalking | Show while talking | T | off | U | L | Nameplates | Hovering or Tab still shows the nameplate of someone talking, under their bubble. The stock game hides it until they finish. |
@@ -623,6 +623,7 @@ flow in slot order; no rows is vanilla order, *Reset layout* drops the root kind
 | inventory.size | Size | S | 0.75–3 × step 0.05 · 1 | U | L | — | Scale over the UI font scale. The window shrinks itself to fit the screen. |
 | inventory.mode | Pages | D | Tabs / Scroll · Scroll | U | L | — | Tabs is the vanilla layout (a tab per page); Scroll replaces the tabs with a scrollbar that glides through every page, dividers marking where each begins. |
 | inventory.search | Search box | T | on | U | L | — | A box in the title bar that dims every item whose name doesn't match. |
+| inventory.takeall | Take all button | T | on | U | L | — | A Take all button in an open container's title bar: it takes every item into the backpack one at a time, each after the server confirms the last, no faster than a player clicking. |
 | inventory.kilograms | Kilograms tooltip | T | off | U | L | — | Hovering the weight shows it in kilograms (1 lb = 0.4536 kg). The window itself keeps the game's pounds. |
 | inventory.dropground | Drag out to drop | T | on | U | L | — | Releasing a dragged item over the world acts as the stock panel does: on the ground it drops there, on another creature it offers a trade, on you or your associate a potion is drunk. Off: only quickbar drops leave the window. |
 | inventory.abovenui | Draw above NUI | T | off | U | L | — | Draws over the server's NUI windows and takes the clicks where they overlap. Off, a NUI window covers it. |
@@ -950,14 +951,11 @@ post-Control Adjust/SettleCollision; FOV `Camera+0x4c4` has no engine restorer, 
 `_fovFirst`, then `_welded = true` + `CameraCut()`. The layer writes the slider whenever the
 mode's master is on. Mouse-look is a per-mode toggle, not a group of its own.
 
-**Camera** — groups `walls` (510, *Walls*), `free` (512, *Free camera*). Neither has a master;
+**Camera** — group `free` (512, *Free camera*). It has no master;
 `free`'s header: "No master: the free camera is entered from the button and left with Escape."
 
 | key | label | kind | range · default | tier | eff | section | help |
 |---|---|---|---|---|---|---|---|
-| walls.fade | Fade objects that hide you | T | on | U | L | Fade | Trees, walls and props between the camera and your character turn see-through. Needs Alloy: with it off the row is greyed and says so. |
-| walls.floor | Faded opacity | S | 0–1 step 0.05 · 0.5 | U | L | Fade | How solid a faded object stays. 0 hides it entirely. |
-| walls.radius | Fade ray width | S | 0–5 m step 0.1 · 0.5 | C | L | Fade | Half-width of the ray fan that finds occluders. |
 | free.enter | Enter the free camera | B | — | U | — | — | Fly the camera freely: move keys fly, Space/C up and down, Z/X roll, Shift is fast, the wheel sets speed, right-drag looks. Escape returns. Closes this panel. |
 | free.speed | Fly speed | S | 0.1–200 m/s step 0.5 · 8 | U | L | Feel | How fast the move keys fly the camera; Shift is four times this. |
 | free.leash | Range from your character | S | 1–25 m step 1 · 25 | U | L | Feel | The camera stops this far from your character. A server that sets its own camera limit overrides it. |
@@ -966,7 +964,7 @@ mode's master is on. Mouse-look is a per-mode toggle, not a group of its own.
 | free.turn | Keyboard turn speed | S | 10–720 °/s step 10 · 90 | A | L | Feel | |
 | free.roll | Roll on entry | S | −180–180 ° step 5 · 0 | A | L | Feel | |
 
-`_occRate` (8) stays a const; `Leave()` restores FOV when `free.fov` was set.
+`Leave()` restores FOV when `free.fov` was set.
 
 **Targeting** — group `tabtarget` (520). Master = the whole mode; off = stock Tab and stock
 clicks, the lock and any pending preview cast dropped on the off edge. With it on, its cast
@@ -1097,7 +1095,7 @@ is not "the stock one draws", it is "nothing draws". The caveat is what the buil
 | Mouse-look | `<mode>.mouselook` | U · live | `Release()` on the off edge; per mode, not a group. |
 | Tab-target | tabtarget.enabled | U · live | off (the default) = stock Tab and clicks; the lock and a pending preview cast drop on the off edge. |
 | Hotkeys | hotkeys.enabled | U · live | gate the actions, never the hooks or the advertise. |
-| General, About, Preset, Lights, Ambient occlusion, Effects, Image, Walls, Free camera | none | — | the header says why. |
+| General, About, Preset, Lights, Ambient occlusion, Effects, Image, Free camera | none | — | the header says why. |
 
 Framework facts: the window registry is immutable after frame 1, so every live hide is a
 content early-return, never an Unregister.
@@ -1133,7 +1131,7 @@ Each step ships on its own and leaves the client working.
 4. **The panel:** window, three columns, row kinds, master/parent/Advanced/reset/markers,
    `/settings` door, panel face. Delete the three per-feature panels and gears.
 5. **The gear:** the three live checks, the yield exemption, the sprite, the anchor.
-6. **Docs:** CLAUDE.md "Tuning knobs" (already points here), `docs/agents`, `/knobs` mention in
+6. **Docs:** DESIGN.md "Tuning knobs" (already points here), `docs/agents`, `/knobs` mention in
    README if any.
 
 ## 8. Deleted
@@ -1155,7 +1153,7 @@ Each step ships on its own and leaves the client working.
 - Boot/live twins collapsed into one knob: `halos`/`halosize` (`halogain` is gone -- `effects.halos`
   IS the brightness), `probe`,
   `renderscale`, `shadows` (+ the feed's `_enabled`), `partbatch`, `partsamp`, `keydiag`,
-  the four `mouselook*` boot keys, `camera.occlude`.
+  the four `mouselook*` boot keys.
 
 ## 9. Not in this spec
 

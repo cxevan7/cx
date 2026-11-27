@@ -30,9 +30,9 @@ public sealed unsafe partial class AlloyRenderer : IExtenderService
     /// saturated table makes that key a bucket every unseen texture shares, costing the sort its point.</summary>
     internal const int MaxMats = 16384;
     /// <summary>Floats per CxDraw record: std430 <c>mat4 + vec4 rot + vec4 amb + vec4 dif + vec4 emi + vec4
-    /// pbr + vec4 spc + vec4 feat + mat4 prev + vec4 ext0..ext2 + vec4 occ</c> = 304 bytes, whose alignment (16)
-    /// already divides the size, so the array stride is 304 with no padding.</summary>
-    internal const int DrawFloats = 76;
+    /// pbr + vec4 spc + vec4 feat + mat4 prev + vec4 ext0..ext2</c> = 288 bytes, whose alignment (16) already
+    /// divides the size, so the array stride is 288 with no padding.</summary>
+    internal const int DrawFloats = 72;
     /// <summary>ADR 0026: where the three material-extension vec4s (<c>ext0..ext2</c>) start -- after
     /// <c>prev</c>, so no older field moved.</summary>
     internal const int ExtFloat = 60;
@@ -84,8 +84,6 @@ public sealed unsafe partial class AlloyRenderer : IExtenderService
     /// <summary>The record takes no shadow (<c>CX_SLOT_NOSHADOW</c>): an untextured blended sheet such as a door's
     /// <c>sam</c> transition sheen. Binds nothing.</summary>
     internal const int NoShadowBit = 1 << 8;
-    /// <summary>A part at or under this mesh alpha casts no shadow: vanilla skips drawing it outright.</summary>
-    internal const float CastAlphaFloor = 0.004f;
     /// <summary>The four PALETTE slots: <c>.mtr</c> <see cref="PalTexture0"/>..<c>texture10</c>, the engine's
     /// own last four material stages (it pins <c>texUnit7</c>..<c>texUnit10</c> to units 7..10 at link). Alloy
     /// has no unit left for them -- the lit stage spends 0..30 -- so they reach their readers, the content pairs,
@@ -337,7 +335,7 @@ public sealed unsafe partial class AlloyRenderer : IExtenderService
         // #571: the stock-settings reader forges a std::string for the engine; a header packed wrong is a
         // crash on the first world frame, not a misrender, so it joins the gating chain.
         StockConfig.Attach(log);
-        if (!CutCensusSelfCheck(log) || !CasterBoundSelfCheck(log) || !SortSelfCheck(log) || !OitOrderSelfCheck(log) || !BatchMergeSelfCheck(log) || !CullSortSelfCheck(log) || !SplitSelfCheck(log) || !MotionSelfCheck(log) || !Highlight.SelfCheck(log) || !MtrParams.SelfCheck(log) || !Db.MapGateApprovedExamples.SelfCheck(log) || !PeriodLineSelfCheck(log) || !PassBlockSelfCheck(log) || !PassBlockEdgesSelfCheck(log) || !LooseStagingSelfCheck(log) || !ChaseSelfCheck(log) || !KeyholeBoxSelfCheck(log) || !SphereRectSelfCheck(log)
+        if (!CutCensusSelfCheck(log) || !CasterBoundSelfCheck(log) || !SortSelfCheck(log) || !OitOrderSelfCheck(log) || !BatchMergeSelfCheck(log) || !CullSortSelfCheck(log) || !SplitSelfCheck(log) || !GradedPltSelfCheck(log) || !MotionSelfCheck(log) || !Highlight.SelfCheck(log) || !MtrParams.SelfCheck(log) || !Db.MapGateApprovedExamples.SelfCheck(log) || !PeriodLineSelfCheck(log) || !PassBlockSelfCheck(log) || !PassBlockEdgesSelfCheck(log) || !LooseStagingSelfCheck(log) || !ChaseSelfCheck(log) || !KeyholeBoxSelfCheck(log) || !SphereRectSelfCheck(log)
             || !AreaGrid.SelfCheck(log)
             || !DbSelfChecks(log)
             || !RendererContract.SelfCheck(log)
@@ -399,7 +397,6 @@ public sealed unsafe partial class AlloyRenderer : IExtenderService
         // DbAnim's, checked by its own self-check.
         _skinning = Renderer.OwnSkin.Boot;
         _isEnabled = EngineFn.RiIsEnabled;
-        OccludeInit(log);   // #537
         // Hook install is its own walk, and it stays HERE rather than joining Attach above: a pass that hooks
         // the engine on a client where the Alloy renderer cannot arm would be suppressing draws nothing
         // replaces. Everything above this line has already returned in that case.
